@@ -39,15 +39,16 @@ def _result(id_: str, title: str, kind: str, question: str, config: dict, result
 
 
 # 1 -------------------------------------------------------------------------
-def base_rate_sensitivity(tpr: float = 0.90, fpr: float = 0.05, prevalence: float = 0.05,
-                          population: int = 10_000) -> dict:
+def base_rate_sensitivity(
+    tpr: float = 0.90, fpr: float = 0.05, prevalence: float = 0.05, population: int = 10_000
+) -> dict:
     grid = [0.001, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.3, 0.5]
     example = rel.predictive_values(tpr, fpr, prevalence, population)
-    curves = {
-        f"fpr={f:g}": rel.ppv_sensitivity(tpr, f, grid) for f in sorted({0.01, fpr, 0.10})
-    }
+    curves = {f"fpr={f:g}": rel.ppv_sensitivity(tpr, f, grid) for f in sorted({0.01, fpr, 0.10})}
     return _result(
-        "exp1_base_rate", "Base-rate sensitivity of PPV", "analytical",
+        "exp1_base_rate",
+        "Base-rate sensitivity of PPV",
+        "analytical",
         "How does the share of flagged items that are truly AI-generated change with prevalence?",
         {"tpr": tpr, "fpr": fpr, "prevalence": prevalence, "population": population, "prevalence_grid": grid},
         {"illustrative_example": example.to_dict(), "curves": curves},
@@ -68,7 +69,9 @@ def subgroup_error_concentration(groups: dict | None = None) -> dict:
     }
     rows = rel.subgroup_false_positive_share(groups)
     return _result(
-        "exp2_subgroup", "Subgroup false-positive concentration", "analytical",
+        "exp2_subgroup",
+        "Subgroup false-positive concentration",
+        "analytical",
         "If false-positive rates differ by group, where do false accusations land?",
         {"groups": groups},
         rows,
@@ -81,9 +84,16 @@ def subgroup_error_concentration(groups: dict | None = None) -> dict:
 
 
 # 3 -------------------------------------------------------------------------
-def independent_corroboration(tpr1: float = 0.90, fpr1: float = 0.05, tpr2: float = 0.80, fpr2: float = 0.05,
-                              prevalence: float = 0.05, correlations: tuple[float, ...] = (0.0, 0.3, 0.6, 0.9),
-                              n_per_class: int = 200_000, seed: int = 7) -> dict:
+def independent_corroboration(
+    tpr1: float = 0.90,
+    fpr1: float = 0.05,
+    tpr2: float = 0.80,
+    fpr2: float = 0.05,
+    prevalence: float = 0.05,
+    correlations: tuple[float, ...] = (0.0, 0.3, 0.6, 0.9),
+    n_per_class: int = 200_000,
+    seed: int = 7,
+) -> dict:
     assumed = rel.combined_rates_assuming_independence(tpr1, fpr1, tpr2, fpr2, "and")
     rng = np.random.default_rng(seed)
     # Binormal latent scores with within-class correlation rho; thresholds set from marginals.
@@ -96,20 +106,32 @@ def independent_corroboration(tpr1: float = 0.90, fpr1: float = 0.05, tpr2: floa
         pos = rng.multivariate_normal([mu1, mu2], cov, n_per_class)
         f_and = float(((neg[:, 0] >= t1) & (neg[:, 1] >= t2)).mean())
         t_and = float(((pos[:, 0] >= t1) & (pos[:, 1] >= t2)).mean())
-        rows.append({
-            "within_class_correlation": rho,
-            "empirical_joint_tpr": t_and,
-            "empirical_joint_fpr": f_and,
-            "assumed_independent_fpr": assumed["fpr"],
-            "fpr_underestimate_factor": (f_and / assumed["fpr"]) if assumed["fpr"] else None,
-            "ppv_empirical": rel.ppv(t_and, f_and, prevalence),
-            "ppv_assumed_independent": rel.ppv(float(assumed["tpr"]), float(assumed["fpr"]), prevalence),
-        })
+        rows.append(
+            {
+                "within_class_correlation": rho,
+                "empirical_joint_tpr": t_and,
+                "empirical_joint_fpr": f_and,
+                "assumed_independent_fpr": assumed["fpr"],
+                "fpr_underestimate_factor": (f_and / assumed["fpr"]) if assumed["fpr"] else None,
+                "ppv_empirical": rel.ppv(t_and, f_and, prevalence),
+                "ppv_assumed_independent": rel.ppv(float(assumed["tpr"]), float(assumed["fpr"]), prevalence),
+            }
+        )
     return _result(
-        "exp3_corroboration", "Independent corroboration", "simulation",
+        "exp3_corroboration",
+        "Independent corroboration",
+        "simulation",
         "How much does requiring a second signal help, and what if signals are correlated?",
-        {"tpr1": tpr1, "fpr1": fpr1, "tpr2": tpr2, "fpr2": fpr2, "prevalence": prevalence,
-         "n_per_class": n_per_class, "seed": seed, "latent_model": "bivariate normal"},
+        {
+            "tpr1": tpr1,
+            "fpr1": fpr1,
+            "tpr2": tpr2,
+            "fpr2": fpr2,
+            "prevalence": prevalence,
+            "n_per_class": n_per_class,
+            "seed": seed,
+            "latent_model": "bivariate normal",
+        },
         {"assumption_based": assumed, "simulated": rows},
         [
             "The product of rates is valid only under conditional independence given the true class.",
@@ -132,13 +154,17 @@ def auroc_vs_strict_fpr(n_pos: int = 2000, n_neg: int = 2000, seed: int = 11) ->
         y = np.r_[np.ones(n_pos, int), np.zeros(n_neg, int)]
         s = np.r_[pos, neg]
         ops = [rel.tpr_at_fpr(y, s, f) for f in (0.01, 0.001)]
-        rows.append({
-            "detector": name,
-            "auroc": rel.auroc(y, s),
-            "operating_points": [asdict(o) for o in ops],
-        })
+        rows.append(
+            {
+                "detector": name,
+                "auroc": rel.auroc(y, s),
+                "operating_points": [asdict(o) for o in ops],
+            }
+        )
     return _result(
-        "exp4_auroc_strict_fpr", "AUROC versus sensitivity at strict FPR", "simulation",
+        "exp4_auroc_strict_fpr",
+        "AUROC versus sensitivity at strict FPR",
+        "simulation",
         "Do detectors with similar AUROC behave similarly at low false-positive operating points?",
         {"n_pos": n_pos, "n_neg": n_neg, "seed": seed},
         rows,
@@ -151,9 +177,13 @@ def auroc_vs_strict_fpr(n_pos: int = 2000, n_neg: int = 2000, seed: int = 11) ->
 
 
 # 5 -------------------------------------------------------------------------
-def watermark_length_entropy(lengths: tuple[int, ...] = (10, 25, 50, 100, 200),
-                             zipf_exponents: tuple[float, ...] = (0.6, 1.0, 1.5, 2.5),
-                             trials: int = 30, vocab_size: int = 1024, seed: int = 5) -> dict:
+def watermark_length_entropy(
+    lengths: tuple[int, ...] = (10, 25, 50, 100, 200),
+    zipf_exponents: tuple[float, ...] = (0.6, 1.0, 1.5, 2.5),
+    trials: int = 30,
+    vocab_size: int = 1024,
+    seed: int = 5,
+) -> dict:
     cfg = wm.WatermarkConfig(vocab_size=vocab_size, gamma=0.25, delta=2.0)
     mark = wm.GreenListWatermark(_KEY, cfg)
     rng = np.random.default_rng(seed)
@@ -165,13 +195,29 @@ def watermark_length_entropy(lengths: tuple[int, ...] = (10, 25, 50, 100, 200),
             for _ in range(trials):
                 det += mark.detect(wm.generate(lm, n, rng, mark, int(rng.integers(vocab_size)))).detected
                 fp += mark.detect(wm.generate(lm, n, rng, None, int(rng.integers(vocab_size)))).detected
-            rows.append({"zipf_exponent": s, "mean_entropy_nats": lm.mean_entropy(), "length": n,
-                         "detection_rate": det / trials, "false_positive_rate": fp / trials, "trials": trials})
+            rows.append(
+                {
+                    "zipf_exponent": s,
+                    "mean_entropy_nats": lm.mean_entropy(),
+                    "length": n,
+                    "detection_rate": det / trials,
+                    "false_positive_rate": fp / trials,
+                    "trials": trials,
+                }
+            )
     return _result(
-        "exp5_watermark_length_entropy", "Watermark detection vs length and entropy", "simulation",
+        "exp5_watermark_length_entropy",
+        "Watermark detection vs length and entropy",
+        "simulation",
         "How many tokens are needed to detect the reference watermark under different entropy regimes?",
-        {**asdict(cfg), "z_threshold": 4.0, "trials": trials, "seed": seed,
-         "generator": "SyntheticLM (toy Markov model)", "watermark": "AEGIS reference green-list scheme"},
+        {
+            **asdict(cfg),
+            "z_threshold": 4.0,
+            "trials": trials,
+            "seed": seed,
+            "generator": "SyntheticLM (toy Markov model)",
+            "watermark": "AEGIS reference green-list scheme",
+        },
         rows,
         [
             "Generator and watermark are synthetic; results characterise the reference scheme only.",
@@ -182,8 +228,14 @@ def watermark_length_entropy(lengths: tuple[int, ...] = (10, 25, 50, 100, 200),
 
 
 # 6 -------------------------------------------------------------------------
-def watermark_robustness(fractions: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5), length: int = 200,
-                         trials: int = 30, vocab_size: int = 1024, zipf_exponent: float = 1.0, seed: int = 9) -> dict:
+def watermark_robustness(
+    fractions: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.4, 0.5),
+    length: int = 200,
+    trials: int = 30,
+    vocab_size: int = 1024,
+    zipf_exponent: float = 1.0,
+    seed: int = 9,
+) -> dict:
     cfg = wm.WatermarkConfig(vocab_size=vocab_size)
     mark = wm.GreenListWatermark(_KEY, cfg)
     lm = wm.SyntheticLM(vocab_size, zipf_exponent, seed)
@@ -192,10 +244,18 @@ def watermark_robustness(fractions: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.4
     rows = []
     for f in fractions:
         dets = [mark.detect(wm.replace_tokens(t, f, vocab_size, rng)) for t in samples]
-        rows.append({"replacement_fraction": f, "detection_rate": float(np.mean([d.detected for d in dets])),
-                     "mean_z": float(np.mean([d.z_score for d in dets])), "trials": trials})
+        rows.append(
+            {
+                "replacement_fraction": f,
+                "detection_rate": float(np.mean([d.detected for d in dets])),
+                "mean_z": float(np.mean([d.z_score for d in dets])),
+                "trials": trials,
+            }
+        )
     return _result(
-        "exp6_watermark_robustness", "Watermark robustness under token replacement", "simulation",
+        "exp6_watermark_robustness",
+        "Watermark robustness under token replacement",
+        "simulation",
         "How quickly does detection degrade under controlled random token replacement?",
         {**asdict(cfg), "length": length, "trials": trials, "zipf_exponent": zipf_exponent, "seed": seed},
         rows,
@@ -207,8 +267,9 @@ def watermark_robustness(fractions: tuple[float, ...] = (0.0, 0.1, 0.2, 0.3, 0.4
 
 
 # 7 -------------------------------------------------------------------------
-def threshold_selection(targets: tuple[float, ...] = (1e-2, 1e-3, 1e-4, 1e-6), lengths: tuple[int, ...] = (50, 200),
-                        gamma: float = 0.25) -> dict:
+def threshold_selection(
+    targets: tuple[float, ...] = (1e-2, 1e-3, 1e-4, 1e-6), lengths: tuple[int, ...] = (50, 200), gamma: float = 0.25
+) -> dict:
     rows = []
     for alpha in targets:
         z_norm = float(stats.norm.isf(alpha))
@@ -216,14 +277,20 @@ def threshold_selection(targets: tuple[float, ...] = (1e-2, 1e-3, 1e-4, 1e-6), l
             # Exact: smallest green count k with P(X>=k) <= alpha under Binomial(n, gamma)
             k = next(k for k in range(n + 2) if k > n or stats.binom.sf(k - 1, n, gamma) <= alpha)
             exact_fpr = float(stats.binom.sf(k - 1, n, gamma)) if k <= n else 0.0
-            rows.append({
-                "target_fpr": alpha, "tokens": n, "z_threshold_normal": z_norm,
-                "exact_min_green_count": k if k <= n else None,
-                "exact_achieved_fpr": exact_fpr,
-                "normal_threshold_true_fpr": wm.exact_false_positive_rate(n, gamma, z_norm),
-            })
+            rows.append(
+                {
+                    "target_fpr": alpha,
+                    "tokens": n,
+                    "z_threshold_normal": z_norm,
+                    "exact_min_green_count": k if k <= n else None,
+                    "exact_achieved_fpr": exact_fpr,
+                    "normal_threshold_true_fpr": wm.exact_false_positive_rate(n, gamma, z_norm),
+                }
+            )
     return _result(
-        "exp7_threshold_selection", "Threshold selection against FPR tolerance", "analytical",
+        "exp7_threshold_selection",
+        "Threshold selection against FPR tolerance",
+        "analytical",
         "Which threshold meets a target false-positive tolerance, exactly versus approximately?",
         {"targets": targets, "lengths": lengths, "gamma": gamma},
         rows,
@@ -232,43 +299,78 @@ def threshold_selection(targets: tuple[float, ...] = (1e-2, 1e-3, 1e-4, 1e-6), l
 
 
 # 8 -------------------------------------------------------------------------
-def watermark_strength_distortion(deltas: tuple[float, ...] = (0.5, 1.0, 2.0, 4.0, 8.0), length: int = 100,
-                                  trials: int = 30, vocab_size: int = 1024, zipf_exponent: float = 1.0,
-                                  seed: int = 13) -> dict:
+def watermark_strength_distortion(
+    deltas: tuple[float, ...] = (0.5, 1.0, 2.0, 4.0, 8.0),
+    length: int = 100,
+    trials: int = 30,
+    vocab_size: int = 1024,
+    zipf_exponent: float = 1.0,
+    seed: int = 13,
+) -> dict:
     lm = wm.SyntheticLM(vocab_size, zipf_exponent, seed)
     rng = np.random.default_rng(seed)
     rows = []
     for d in deltas:
         mark = wm.GreenListWatermark(_KEY, wm.WatermarkConfig(vocab_size=vocab_size, delta=d))
-        rate = np.mean([mark.detect(wm.generate(lm, length, rng, mark, int(rng.integers(vocab_size)))).detected
-                        for _ in range(trials)])
-        rows.append({"delta": d, "detection_rate": float(rate), "trials": trials,
-                     **wm.watermark_distortion(lm, mark, contexts=300, seed=seed)})
+        rate = np.mean(
+            [
+                mark.detect(wm.generate(lm, length, rng, mark, int(rng.integers(vocab_size)))).detected
+                for _ in range(trials)
+            ]
+        )
+        rows.append(
+            {
+                "delta": d,
+                "detection_rate": float(rate),
+                "trials": trials,
+                **wm.watermark_distortion(lm, mark, contexts=300, seed=seed),
+            }
+        )
     return _result(
-        "exp8_strength_distortion", "Watermark strength versus output distortion", "simulation",
+        "exp8_strength_distortion",
+        "Watermark strength versus output distortion",
+        "simulation",
         "How does increasing the bias delta trade detectability for distributional distortion?",
         {"length": length, "trials": trials, "vocab_size": vocab_size, "zipf_exponent": zipf_exponent, "seed": seed},
         rows,
-        ["KL divergence is one mathematical distortion measure; a low value does not show that semantic "
-         "quality is preserved."],
+        [
+            "KL divergence is one mathematical distortion measure; a low value does not show that semantic "
+            "quality is preserved."
+        ],
     )
 
 
 # 9 -------------------------------------------------------------------------
-def false_positive_calibration(lengths: tuple[int, ...] = (10, 16, 25, 50, 100, 200, 500, 1000),
-                               z_thresholds: tuple[float, ...] = (2.0, 4.0), gamma: float = 0.25) -> dict:
+def false_positive_calibration(
+    lengths: tuple[int, ...] = (10, 16, 25, 50, 100, 200, 500, 1000),
+    z_thresholds: tuple[float, ...] = (2.0, 4.0),
+    gamma: float = 0.25,
+) -> dict:
     rows = []
     for z in z_thresholds:
         approx = float(stats.norm.sf(z))
         for n in lengths:
             exact = wm.exact_false_positive_rate(n, gamma, z)
-            rows.append({"z_threshold": z, "tokens": n, "exact_fpr": exact, "normal_approx_fpr": approx,
-                         "ratio_exact_to_approx": exact / approx if approx else None})
+            rows.append(
+                {
+                    "z_threshold": z,
+                    "tokens": n,
+                    "exact_fpr": exact,
+                    "normal_approx_fpr": approx,
+                    "ratio_exact_to_approx": exact / approx if approx else None,
+                }
+            )
     return _result(
-        "exp9_fpr_calibration", "Exact binomial FPR versus normal approximation", "analytical",
+        "exp9_fpr_calibration",
+        "Exact binomial FPR versus normal approximation",
+        "analytical",
         "How accurate is the z-test's normal approximation for short texts?",
-        {"lengths": lengths, "z_thresholds": z_thresholds, "gamma": gamma,
-         "model": "i.i.d. Bernoulli(gamma) green indicators under H0"},
+        {
+            "lengths": lengths,
+            "z_thresholds": z_thresholds,
+            "gamma": gamma,
+            "model": "i.i.d. Bernoulli(gamma) green indicators under H0",
+        },
         rows,
         [
             "Assumes independent green indicators; repeated n-grams violate this and must be deduplicated.",

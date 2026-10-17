@@ -2,7 +2,6 @@ import math
 
 import numpy as np
 import pytest
-
 from aegis_research import reliability as rel
 
 
@@ -126,9 +125,7 @@ def test_independence_vs_empirical_joint():
 
 
 def test_subgroup_share_and_suppression():
-    rows = rel.subgroup_false_positive_share(
-        {"a": {"n_human": 900, "fpr": 0.02}, "b": {"n_human": 100, "fpr": 0.10}}
-    )
+    rows = rel.subgroup_false_positive_share({"a": {"n_human": 900, "fpr": 0.02}, "b": {"n_human": 100, "fpr": 0.10}})
     by = {r["group"]: r for r in rows}
     assert by["b"]["false_flag_share"] == pytest.approx(10 / 28)
     rows = rel.subgroup_false_positive_share({"a": {"n_human": 5, "fpr": 0.1}}, suppress_below=10)

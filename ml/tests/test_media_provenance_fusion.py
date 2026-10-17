@@ -1,13 +1,16 @@
 import json
 
 import pytest
-
 from aegis_ml import fixtures
 from aegis_ml.audio.analysis import AudioSignalMethod
 from aegis_ml.core import Modality, RunStatus
 from aegis_ml.fusion import fuse
-from aegis_ml.image.analysis import (ErrorLevelAnalysisMethod, FrequencySpectrumMethod, ImageMetadataMethod,
-                                     NoiseResidualMethod)
+from aegis_ml.image.analysis import (
+    ErrorLevelAnalysisMethod,
+    FrequencySpectrumMethod,
+    ImageMetadataMethod,
+    NoiseResidualMethod,
+)
 from aegis_ml.provenance.c2pa_verifier import C2PAVerifier, DeclaredMetadataMethod
 from aegis_ml.providers import HttpDetectorProvider, ProviderResponseError, validate_provider_response
 from aegis_ml.registry import PROFILES, build_registry, methods_for
@@ -96,9 +99,14 @@ def test_c2pa_states(tmp_path, make_input, jpeg, monkeypatch):
 
 def test_provider_contract_validation(monkeypatch, jpeg, make_input):
     assert validate_provider_response({"score": 0.3, "model_version": "v1"})["score"] == 0.3
-    for bad in ({"score": "x", "model_version": "v"}, {"score": float("nan"), "model_version": "v"},
-                {"score": 1, "model_version": ""}, {"score": 1, "model_version": "v", "request_id": "<script>"},
-                [], {"score": True, "model_version": "v"}):
+    for bad in (
+        {"score": "x", "model_version": "v"},
+        {"score": float("nan"), "model_version": "v"},
+        {"score": 1, "model_version": ""},
+        {"score": 1, "model_version": "v", "request_id": "<script>"},
+        [],
+        {"score": True, "model_version": "v"},
+    ):
         with pytest.raises(ProviderResponseError):
             validate_provider_response(bad)
     p = HttpDetectorProvider("image_detector", Modality.IMAGE, "x")
@@ -121,8 +129,15 @@ def test_profiles_reference_registered_methods():
 
 
 def _r(mid, cls, status="completed", flagged=None, output=None, calibrated=False):
-    return {"method_id": mid, "evidence_class": cls, "status": status, "flagged": flagged,
-            "output": output or {}, "summary": "", "calibrated": calibrated}
+    return {
+        "method_id": mid,
+        "evidence_class": cls,
+        "status": status,
+        "flagged": flagged,
+        "output": output or {},
+        "summary": "",
+        "calibrated": calibrated,
+    }
 
 
 def test_fusion_never_treats_failure_or_unavailable_as_negative():
@@ -145,8 +160,11 @@ def test_fusion_categories_and_contradiction():
     f = fuse([_r("w", "verified_watermark", flagged=False)])
     assert f.primary_outcome == "inconclusive"
     assert any("does not indicate human authorship" in r for r in f.uncertainty_reasons)
-    prov = _r("p", "cryptographic_provenance", output={"state": "signature_valid_signer_trusted",
-                                                     "declared_capture_source": True})
+    prov = _r(
+        "p",
+        "cryptographic_provenance",
+        output={"state": "signature_valid_signer_trusted", "declared_capture_source": True},
+    )
     f = fuse([prov, _r("a", "statistical_inference", flagged=True)])
     assert f.primary_outcome == "contradictory_evidence"
     assert "provenance_record_verified" in f.categories  # provenance is not rejected automatically

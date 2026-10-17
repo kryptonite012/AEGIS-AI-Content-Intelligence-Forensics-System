@@ -16,8 +16,16 @@ import re
 import numpy as np
 from aegis_research.watermark import GreenListWatermark, SyntheticLM, WatermarkConfig, generate
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, EvidenceClass, ImplementationStatus, MethodInfo
-from aegis_ml.core import MethodResult, Modality, RunStatus
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+)
 
 VOCAB_SIZE = 2048
 _CONS = "bdfgklmnprstvzhj"
@@ -108,18 +116,25 @@ class ReferenceWatermarkVerifier(AnalysisMethod):
         out = det.to_dict() | {"key_fingerprint": mark.key_fingerprint, "vocabulary": f"aegis-pseudoword-{VOCAB_SIZE}"}
         cfg = {"gamma": mark.config.gamma, "z_threshold": self.z_threshold, "dedupe_pairs": True}
         if not det.sufficient_length:
-            return self.result(RunStatus.INSUFFICIENT_INPUT,
-                               f"Only {det.scored_tokens} scorable tokens; too short to test for the watermark.",
-                               output=out, config=cfg)
+            return self.result(
+                RunStatus.INSUFFICIENT_INPUT,
+                f"Only {det.scored_tokens} scorable tokens; too short to test for the watermark.",
+                output=out,
+                config=cfg,
+            )
         summary = (
             f"Reference watermark detected (z={det.z_score:.2f}, exact p={det.p_value_exact:.2e})."
             if det.detected
             else f"Reference watermark not detected (z={det.z_score:.2f}). This does not indicate human authorship."
         )
         return self.result(
-            RunStatus.COMPLETED, summary, output=out, score=det.z_score,
+            RunStatus.COMPLETED,
+            summary,
+            output=out,
+            score=det.z_score,
             score_semantics="z-score under H0 (not watermarked with this key)",
-            flagged=det.detected, config=cfg,
+            flagged=det.detected,
+            config=cfg,
             uncertainty={"p_value_exact": det.p_value_exact, "p_value_normal_approx": det.p_value_normal_approx},
         )
 

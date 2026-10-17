@@ -1,0 +1,33 @@
+[project]
+name = "aegis-api"
+version = "0.1.0"
+description = "AEGIS API: case management, evidence vault, analysis orchestration, reports, audit"
+requires-python = ">=3.11"
+dependencies = [
+  "aegis-ml",
+  "aegis-research",
+  "fastapi>=0.115.6,<0.116",
+  "uvicorn[standard]>=0.32,<0.35",
+  "pydantic>=2.10,<3",
+  "pydantic-settings>=2.6,<3",
+  "sqlalchemy>=2.0.36,<2.1",
+  "alembic>=1.14,<2",
+  "psycopg[binary]>=3.2,<4",
+  "redis>=5.2,<6",
+  "celery>=5.4,<6",
+  "argon2-cffi>=23.1,<26",
+  "pyjwt>=2.10,<3",
+  "pyotp>=2.9,<3",
+  "python-multipart>=0.0.18,<0.1",
+  "reportlab>=4.2,<5",
+  "boto3>=1.35,<2",
+  "email-validator>=2.2,<3",
+  "cryptography>=44,<47",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]

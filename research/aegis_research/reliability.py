@@ -176,9 +176,7 @@ def classification_metrics(cm: ConfusionMatrix, confidence: float = 0.95) -> Cla
             f"Small evaluation sample (positives={cm.positives}, negatives={cm.negatives}); "
             "intervals are wide and point estimates are unstable."
         )
-    warnings.append(
-        "Precision/NPV reflect the evaluation sample's class balance, not a deployment population."
-    )
+    warnings.append("Precision/NPV reflect the evaluation sample's class balance, not a deployment population.")
     return ClassificationMetrics(
         confusion=cm,
         tpr=tpr,
@@ -283,9 +281,7 @@ def predictive_values(
     )
 
 
-def ppv_sensitivity(
-    tpr: float, fpr: float, prevalences: Sequence[float]
-) -> list[dict[str, float | None]]:
+def ppv_sensitivity(tpr: float, fpr: float, prevalences: Sequence[float]) -> list[dict[str, float | None]]:
     return [{"prevalence": pi, "ppv": ppv(tpr, fpr, pi), "npv": npv(tpr, fpr, pi)} for pi in prevalences]
 
 
@@ -409,7 +405,14 @@ def tpr_at_fpr(
             break
     if best is None:
         return OperatingPoint(
-            target_fpr, None, None, None, None, n_neg, required, estimable,
+            target_fpr,
+            None,
+            None,
+            None,
+            None,
+            n_neg,
+            required,
+            estimable,
             "No threshold achieves the target false-positive rate on this sample.",
         )
     t, fp, tp = best
@@ -453,7 +456,10 @@ def threshold_sweep(
             "tpr": tpr_v,
             "fpr": fpr_v,
             "sample_precision": _safe_div(cm.tp, cm.tp + cm.fp),
-            "tp": cm.tp, "fp": cm.fp, "tn": cm.tn, "fn": cm.fn,
+            "tp": cm.tp,
+            "fp": cm.fp,
+            "tn": cm.tn,
+            "fn": cm.fn,
         }
         if deployment_prevalence is not None and tpr_v is not None and fpr_v is not None:
             pv = predictive_values(tpr_v, fpr_v, deployment_prevalence, population_size)

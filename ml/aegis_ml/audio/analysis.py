@@ -11,8 +11,18 @@ from typing import Any
 import numpy as np
 from scipy import signal
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, Artifact, EvidenceClass, ImplementationStatus
-from aegis_ml.core import MethodInfo, MethodResult, Modality, RunStatus, Segment
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    Artifact,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+    Segment,
+)
 from aegis_ml.providers import run_tool
 from aegis_ml.visual import heat_png, waveform_png
 
@@ -23,7 +33,9 @@ def ffprobe(path: Path) -> dict[str, Any]:
     exe = shutil.which("ffprobe")
     if not exe:
         raise RuntimeError("ffprobe not installed")
-    out = run_tool([exe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)], timeout=60)
+    out = run_tool(
+        [exe, "-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)], timeout=60
+    )
     return json.loads(out)
 
 
@@ -37,8 +49,28 @@ def decode_pcm(path: Path, sample_rate: int, max_seconds: int = MAX_AUDIO_SECOND
     exe = shutil.which("ffmpeg")
     if not exe:
         raise RuntimeError("ffmpeg not installed")
-    raw = run_tool([exe, "-v", "error", "-nostdin", "-i", str(path), "-map", "0:a:0", "-t", str(max_seconds),
-                    "-ac", "1", "-ar", str(sample_rate), "-f", "f32le", "-"], timeout=300)
+    raw = run_tool(
+        [
+            exe,
+            "-v",
+            "error",
+            "-nostdin",
+            "-i",
+            str(path),
+            "-map",
+            "0:a:0",
+            "-t",
+            str(max_seconds),
+            "-ac",
+            "1",
+            "-ar",
+            str(sample_rate),
+            "-f",
+            "f32le",
+            "-",
+        ],
+        timeout=300,
+    )
     return np.frombuffer(raw, dtype=np.float32).copy()
 
 
@@ -125,24 +157,41 @@ class AudioSignalMethod(AnalysisMethod):
             RunStatus.COMPLETED,
             f"{st.get('codec_name')} {native_sr} Hz, {st.get('channels')} ch, {duration:.1f} s analysed.",
             output={
-                "codec": st.get("codec_name"), "codec_long_name": st.get("codec_long_name"),
-                "native_sample_rate": native_sr, "analysis_sample_rate": sr, "channels": st.get("channels"),
-                "channel_layout": st.get("channel_layout"), "bit_rate": st.get("bit_rate") or probe.get("format", {}).get("bit_rate"),
+                "codec": st.get("codec_name"),
+                "codec_long_name": st.get("codec_long_name"),
+                "native_sample_rate": native_sr,
+                "analysis_sample_rate": sr,
+                "channels": st.get("channels"),
+                "channel_layout": st.get("channel_layout"),
+                "bit_rate": st.get("bit_rate") or probe.get("format", {}).get("bit_rate"),
                 "container": probe.get("format", {}).get("format_name"),
-                "duration_seconds": round(duration, 3), "peak_dbfs": round(20 * np.log10(peak), 2),
-                "rms_dbfs": round(20 * np.log10(rms), 2), "dc_offset": float(x.mean()),
-                "clipping_fraction": clipping, "silence_fraction": silence,
-                "effective_bandwidth_99_hz": bw99, "mean_spectral_flatness": flatness,
+                "duration_seconds": round(duration, 3),
+                "peak_dbfs": round(20 * np.log10(peak), 2),
+                "rms_dbfs": round(20 * np.log10(rms), 2),
+                "dc_offset": float(x.mean()),
+                "clipping_fraction": clipping,
+                "silence_fraction": silence,
+                "effective_bandwidth_99_hz": bw99,
+                "mean_spectral_flatness": flatness,
                 "container_tags": {k: str(v)[:200] for k, v in tags.items()},
             },
             segments=segs[:500],
             warnings=warnings,
             artifacts=[
-                Artifact("waveform.png", "image/png", waveform_png(x / peak),
-                         "Peak-normalised waveform envelope.", "Cannot establish authenticity or synthesis."),
-                Artifact("spectrogram.png", "image/png", heat_png(np.flipud(db[:, :: max(1, db.shape[1] // 1600)])),
-                         "Log-power spectrogram (1024-point Hann STFT); low frequencies at the bottom.",
-                         "Spectral patterns have many benign causes (codecs, rooms, microphones)."),
+                Artifact(
+                    "waveform.png",
+                    "image/png",
+                    waveform_png(x / peak),
+                    "Peak-normalised waveform envelope.",
+                    "Cannot establish authenticity or synthesis.",
+                ),
+                Artifact(
+                    "spectrogram.png",
+                    "image/png",
+                    heat_png(np.flipud(db[:, :: max(1, db.shape[1] // 1600)])),
+                    "Log-power spectrogram (1024-point Hann STFT); low frequencies at the bottom.",
+                    "Spectral patterns have many benign causes (codecs, rooms, microphones).",
+                ),
             ],
             config={"stft": {"nperseg": 1024, "noverlap": 768}, "silence_threshold_dbfs": -50},
         )
@@ -156,8 +205,12 @@ class TranscriptionPlaceholder(AnalysisMethod):
         modalities=(Modality.AUDIO, Modality.VIDEO),
         evidence_class=EvidenceClass.MEDIA_FORENSIC_OBSERVATION,
         implementation=ImplementationStatus.PLACEHOLDER,
-        description="Optional transcription engine boundary. Transcripts are labelled separately from authenticity findings.",
-        output_semantics="Machine transcript with engine confidence; transcription errors are not authenticity findings.",
+        description=(
+            "Optional transcription engine boundary. Transcripts are labelled separately from authenticity findings."
+        ),
+        output_semantics=(
+            "Machine transcript with engine confidence; transcription errors are not authenticity findings."
+        ),
         limitations=("No transcription engine is bundled.",),
         requires=("AEGIS_TRANSCRIPTION_ENGINE",),
     )

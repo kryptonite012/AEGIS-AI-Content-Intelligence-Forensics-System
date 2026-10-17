@@ -22,8 +22,17 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, EvidenceClass, ImplementationStatus, MethodInfo
-from aegis_ml.core import MethodResult, Modality, RunStatus, Segment
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+    Segment,
+)
 from aegis_ml.text.extract import MIN_TOKENS_FOR_ANALYSIS
 from aegis_ml.text.segment import paragraphs
 
@@ -74,6 +83,12 @@ def load_calibration(model_dir: str | None) -> dict[str, Any] | None:
         return None
     cal = json.loads(p.read_text())
     return cal if cal.get("validated") is True else None
+
+
+def registry_calibration(inp: AnalysisInput, method_id: str) -> dict[str, Any] | None:
+    """Validated calibration supplied by the AEGIS model registry (takes precedence over files)."""
+    cal = (inp.options.get("calibration_profiles") or {}).get(method_id)
+    return cal if isinstance(cal, dict) and cal.get("validated") is True else None
 
 
 def _model_identity(path: str) -> dict[str, Any]:
@@ -185,7 +200,7 @@ class SupervisedClassifierAdapter(_TextModelMethod):
                 output={"model_labels": list(label2id)},
             )
         ai_idx = label2id[ai_label.lower()]
-        cal = load_calibration(path)
+        cal = registry_calibration(inp, self.info.id) or load_calibration(path)
 
         def score(text: str) -> float:
             enc = tok(text, truncation=True, max_length=MAX_MODEL_TOKENS, return_tensors="pt").to(model.device)
@@ -212,17 +227,29 @@ class SupervisedClassifierAdapter(_TextModelMethod):
         summary = (
             "Classifier output recorded; no validated operating threshold, so the output is not interpreted."
             if flagged is None
-            else ("Classifier output exceeds the validated threshold (consistent with AI generation)."
-                  if flagged else "Classifier output below the validated threshold. This does not prove human authorship.")
+            else (
+                "Classifier output exceeds the validated threshold (consistent with AI generation)."
+                if flagged
+                else "Classifier output below the validated threshold. This does not prove human authorship."
+            )
         )
         return self.result(
-            RunStatus.COMPLETED, summary, score=doc_score,
+            RunStatus.COMPLETED,
+            summary,
+            score=doc_score,
             score_semantics=f"mean softmax output for label '{ai_label}' over {len(chunks)} chunk(s)",
-            calibrated=prob is not None, flagged=flagged,
-            output={"chunk_scores": chunk_scores, "calibrated_probability": prob, "model": _model_identity(path),
-                    "calibration_profile": cal, "model_tokens": len(enc_all)},
+            calibrated=prob is not None,
+            flagged=flagged,
+            output={
+                "chunk_scores": chunk_scores,
+                "calibrated_probability": prob,
+                "model": _model_identity(path),
+                "calibration_profile": cal,
+                "model_tokens": len(enc_all),
+            },
             uncertainty={"chunk_score_range": [min(chunk_scores), max(chunk_scores)]},
-            warnings=warnings, segments=segments,
+            warnings=warnings,
+            segments=segments,
             config={"max_tokens": MAX_MODEL_TOKENS, "ai_label": ai_label, "device": str(model.device)},
         )
 
@@ -322,20 +349,32 @@ class FastDetectGPTMethod(_TextModelMethod):
         mu = (p * lp).sum(dim=1)
         var = (p * lp.pow(2)).sum(dim=1) - mu.pow(2)
         crit = float((ll - mu.sum()) / var.sum().sqrt())
-        cal = load_calibration(path)
+        cal = registry_calibration(inp, self.info.id) or load_calibration(path)
         prob, flagged = _apply_calibration(crit, cal)
         warnings = _language_ok(inp, cal)
         if warnings:
             prob, flagged = None, None
         return self.result(
             RunStatus.COMPLETED,
-            "Curvature criterion computed; " + ("interpreted against a validated threshold." if flagged is not None
-                                                 else "no validated threshold, so it is not interpreted."),
-            score=crit, score_semantics="Fast-DetectGPT analytic criterion (sampling model = scoring model)",
-            calibrated=prob is not None, flagged=flagged,
-            output={"criterion": crit, "model_tokens_scored": int(len(targets)), "calibrated_probability": prob,
-                    "model": _model_identity(path), "calibration_profile": cal},
-            warnings=warnings, config={"max_tokens": MAX_MODEL_TOKENS, "sampling_model": "same as scoring"},
+            "Curvature criterion computed; "
+            + (
+                "interpreted against a validated threshold."
+                if flagged is not None
+                else "no validated threshold, so it is not interpreted."
+            ),
+            score=crit,
+            score_semantics="Fast-DetectGPT analytic criterion (sampling model = scoring model)",
+            calibrated=prob is not None,
+            flagged=flagged,
+            output={
+                "criterion": crit,
+                "model_tokens_scored": int(len(targets)),
+                "calibrated_probability": prob,
+                "model": _model_identity(path),
+                "calibration_profile": cal,
+            },
+            warnings=warnings,
+            config={"max_tokens": MAX_MODEL_TOKENS, "sampling_model": "same as scoring"},
         )
 
 
@@ -378,7 +417,9 @@ class BinocularsMethod(_TextModelMethod):
         tok, observer = _load_causal_lm(obs_path)
         tok2, performer = _load_causal_lm(perf_path)
         if tok.get_vocab() != tok2.get_vocab():
-            return self.result(RunStatus.FAILED, "Observer and performer tokenizers differ; Binoculars requires a shared vocabulary.")
+            return self.result(
+                RunStatus.FAILED, "Observer and performer tokenizers differ; Binoculars requires a shared vocabulary."
+            )
         ids = tok(inp.text, return_tensors="pt", truncation=True, max_length=MAX_MODEL_TOKENS)["input_ids"]
         with torch.no_grad():
             lo = observer(ids.to(observer.device)).logits[0, :-1].float()
@@ -390,7 +431,7 @@ class BinocularsMethod(_TextModelMethod):
         log_ppl = float(-lp_perf.gather(1, targets[:, None]).mean())
         x_ppl = float(-(torch.softmax(lo, -1) * lp_perf).sum(-1).mean())
         score = log_ppl / x_ppl
-        cal = load_calibration(obs_path)
+        cal = registry_calibration(inp, self.info.id) or load_calibration(obs_path)
         if cal:
             cal = {**cal, "direction": cal.get("direction", "lower_is_ai")}
         prob, flagged = _apply_calibration(score, cal)
@@ -399,12 +440,24 @@ class BinocularsMethod(_TextModelMethod):
             prob, flagged = None, None
         return self.result(
             RunStatus.COMPLETED,
-            "Binoculars score computed; " + ("interpreted against a validated threshold." if flagged is not None
-                                              else "no validated threshold, so it is not interpreted."),
-            score=score, score_semantics="log-perplexity / cross-perplexity (lower = more model-like)",
-            calibrated=prob is not None, flagged=flagged,
-            output={"log_perplexity": log_ppl, "cross_perplexity": x_ppl, "score": score,
-                    "observer": _model_identity(obs_path), "performer": _model_identity(perf_path),
-                    "calibration_profile": cal},
-            warnings=warnings, config={"max_tokens": MAX_MODEL_TOKENS},
+            "Binoculars score computed; "
+            + (
+                "interpreted against a validated threshold."
+                if flagged is not None
+                else "no validated threshold, so it is not interpreted."
+            ),
+            score=score,
+            score_semantics="log-perplexity / cross-perplexity (lower = more model-like)",
+            calibrated=prob is not None,
+            flagged=flagged,
+            output={
+                "log_perplexity": log_ppl,
+                "cross_perplexity": x_ppl,
+                "score": score,
+                "observer": _model_identity(obs_path),
+                "performer": _model_identity(perf_path),
+                "calibration_profile": cal,
+            },
+            warnings=warnings,
+            config={"max_tokens": MAX_MODEL_TOKENS},
         )

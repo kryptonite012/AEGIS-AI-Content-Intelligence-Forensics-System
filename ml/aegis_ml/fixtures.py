@@ -29,7 +29,9 @@ HUMAN_STYLE_SAMPLE = (
 )
 
 
-def make_jpeg(path: Path, size: tuple[int, int] = (640, 480), quality: int = 88, exif_software: str | None = None) -> Path:
+def make_jpeg(
+    path: Path, size: tuple[int, int] = (640, 480), quality: int = 88, exif_software: str | None = None
+) -> Path:
     w, h = size
     yy, xx = np.mgrid[0:h, 0:w]
     rng = np.random.default_rng(1)
@@ -46,7 +48,9 @@ def make_jpeg(path: Path, size: tuple[int, int] = (640, 480), quality: int = 88,
 def make_png_with_declaration(path: Path) -> Path:
     img = Image.fromarray(np.full((256, 256, 3), (40, 80, 160), np.uint8))
     meta = PngImagePlugin.PngInfo()
-    meta.add_text("parameters", "DEMO FIXTURE: a test pattern, Steps: 20, Sampler: Euler, Model: stable diffusion (declared)")
+    meta.add_text(
+        "parameters", "DEMO FIXTURE: a test pattern, Steps: 20, Sampler: Euler, Model: stable diffusion (declared)"
+    )
     img.save(path, "PNG", pnginfo=meta)
     return path
 
@@ -69,10 +73,32 @@ def make_mp4(path: Path, seconds: int = 4) -> Path:
     if not exe:
         raise RuntimeError("ffmpeg is required to generate the video fixture")
     subprocess.run(  # noqa: S603
-        [exe, "-v", "error", "-y", "-f", "lavfi", "-i", f"testsrc=size=320x240:rate=25:duration={seconds}",
-         "-f", "lavfi", "-i", f"sine=frequency=440:duration={seconds}", "-c:v", "libx264", "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-shortest", "-metadata", "comment=DEMO FIXTURE test pattern", str(path)],
-        check=True, timeout=120,
+        [
+            exe,
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"testsrc=size=320x240:rate=25:duration={seconds}",
+            "-f",
+            "lavfi",
+            "-i",
+            f"sine=frequency=440:duration={seconds}",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-c:a",
+            "aac",
+            "-shortest",
+            "-metadata",
+            "comment=DEMO FIXTURE test pattern",
+            str(path),
+        ],
+        check=True,
+        timeout=120,
     )
     return path
 
@@ -92,7 +118,8 @@ def make_pdf(path: Path, text: str) -> Path:
     objs = [
         "<< /Type /Catalog /Pages 2 0 R >>",
         "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 "
+        "0 R /Resources << /Font << /F1 5 0 R >> >> >>",
         f"<< /Length {len(content)} >>\nstream\n{content}\nendstream",
         "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
     ]
@@ -140,28 +167,55 @@ def make_test_ca(directory: Path):
 
     now = datetime.datetime.now(datetime.UTC)
     ca_key = ec.generate_private_key(ec.SECP256R1())
-    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "AEGIS Demo Test CA (untrusted)"),
-                         x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AEGIS Demo")])
-    ku = dict(content_commitment=False, key_encipherment=False, data_encipherment=False, key_agreement=False,
-              encipher_only=False, decipher_only=False)
-    ca = (x509.CertificateBuilder().subject_name(ca_name).issuer_name(ca_name).public_key(ca_key.public_key())
-          .serial_number(x509.random_serial_number()).not_valid_before(now - datetime.timedelta(days=1))
-          .not_valid_after(now + datetime.timedelta(days=365))
-          .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-          .add_extension(x509.KeyUsage(digital_signature=False, key_cert_sign=True, crl_sign=True, **ku), critical=True)
-          .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
-          .sign(ca_key, hashes.SHA256()))
+    ca_name = x509.Name(
+        [
+            x509.NameAttribute(NameOID.COMMON_NAME, "AEGIS Demo Test CA (untrusted)"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AEGIS Demo"),
+        ]
+    )
+    ku = dict(
+        content_commitment=False,
+        key_encipherment=False,
+        data_encipherment=False,
+        key_agreement=False,
+        encipher_only=False,
+        decipher_only=False,
+    )
+    ca = (
+        x509.CertificateBuilder()
+        .subject_name(ca_name)
+        .issuer_name(ca_name)
+        .public_key(ca_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
+        .add_extension(x509.KeyUsage(digital_signature=False, key_cert_sign=True, crl_sign=True, **ku), critical=True)
+        .add_extension(x509.SubjectKeyIdentifier.from_public_key(ca_key.public_key()), critical=False)
+        .sign(ca_key, hashes.SHA256())
+    )
     leaf_key = ec.generate_private_key(ec.SECP256R1())
-    leaf = (x509.CertificateBuilder()
-            .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "AEGIS Demo Signer"),
-                                     x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AEGIS Demo")]))
-            .issuer_name(ca_name).public_key(leaf_key.public_key()).serial_number(x509.random_serial_number())
-            .not_valid_before(now - datetime.timedelta(days=1)).not_valid_after(now + datetime.timedelta(days=365))
-            .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
-            .add_extension(x509.KeyUsage(digital_signature=True, key_cert_sign=False, crl_sign=False, **ku), critical=True)
-            .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.EMAIL_PROTECTION]), critical=False)
-            .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
-            .sign(ca_key, hashes.SHA256()))
+    leaf = (
+        x509.CertificateBuilder()
+        .subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, "AEGIS Demo Signer"),
+                    x509.NameAttribute(NameOID.ORGANIZATION_NAME, "AEGIS Demo"),
+                ]
+            )
+        )
+        .issuer_name(ca_name)
+        .public_key(leaf_key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
+        .add_extension(x509.KeyUsage(digital_signature=True, key_cert_sign=False, crl_sign=False, **ku), critical=True)
+        .add_extension(x509.ExtendedKeyUsage([ExtendedKeyUsageOID.EMAIL_PROTECTION]), critical=False)
+        .add_extension(x509.AuthorityKeyIdentifier.from_issuer_public_key(ca_key.public_key()), critical=False)
+        .sign(ca_key, hashes.SHA256())
+    )
     pem = serialization.Encoding.PEM
     ca_path = directory / "demo-ca.pem"
     ca_path.write_bytes(ca.public_bytes(pem))
@@ -180,10 +234,21 @@ def make_c2pa_signed_jpeg(path: Path, workdir: Path, source_type: str = "trained
     src.seek(0)
     manifest = {
         "claim_generator_info": [{"name": "aegis-demo-fixture", "version": "1.0"}],
-        "title": path.name, "format": "image/jpeg",
-        "assertions": [{"label": "c2pa.actions", "data": {"actions": [{
-            "action": "c2pa.created",
-            "digitalSourceType": f"http://cv.iptc.org/newscodes/digitalsourcetype/{source_type}"}]}}],
+        "title": path.name,
+        "format": "image/jpeg",
+        "assertions": [
+            {
+                "label": "c2pa.actions",
+                "data": {
+                    "actions": [
+                        {
+                            "action": "c2pa.created",
+                            "digitalSourceType": f"http://cv.iptc.org/newscodes/digitalsourcetype/{source_type}",
+                        }
+                    ]
+                },
+            }
+        ],
     }
     signer = c2pa.Signer.from_info(c2pa.C2paSignerInfo(c2pa.C2paSigningAlg.ES256, chain, key, None))
     out = io.BytesIO()
@@ -201,5 +266,7 @@ def tamper(path: Path, dest: Path, offset_from_end: int = 200) -> Path:
 
 def wav_header_only(path: Path) -> Path:
     """Corrupted WAV: valid RIFF header that claims data which is absent."""
-    path.write_bytes(b"RIFF" + struct.pack("<I", 1_000_000) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16))
+    path.write_bytes(
+        b"RIFF" + struct.pack("<I", 1_000_000) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 16000, 32000, 2, 16)
+    )
     return path

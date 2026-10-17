@@ -117,9 +117,7 @@ class MethodResult:
         d["evidence_class"] = str(self.evidence_class)
         d["status"] = str(self.status)
         if not include_artifacts:
-            d["artifacts"] = [
-                {k: v for k, v in a.items() if k != "data"} for a in d["artifacts"]
-            ]
+            d["artifacts"] = [{k: v for k, v in a.items() if k != "data"} for a in d["artifacts"]]
         return d
 
 

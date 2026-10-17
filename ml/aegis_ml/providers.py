@@ -21,8 +21,16 @@ from typing import Any
 
 import numpy as np
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, EvidenceClass, ImplementationStatus, MethodInfo
-from aegis_ml.core import MethodResult, Modality, RunStatus
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+)
 
 _SAFE_REQUEST_ID = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 
@@ -72,7 +80,9 @@ class HttpDetectorProvider(AnalysisMethod):
             evidence_class=EvidenceClass.STATISTICAL_INFERENCE,
             implementation=ImplementationStatus.REQUIRES_CONFIGURATION,
             description="Sends the evidence to a configured detection service using the AEGIS provider contract.",
-            output_semantics="Provider score with the provider's stated semantics. Vendor claims are not AEGIS validation.",
+            output_semantics=(
+                "Provider score with the provider's stated semantics. Vendor claims are not AEGIS validation."
+            ),
             limitations=(
                 "Evidence leaves this deployment; requires an authorised configuration and data-processing terms.",
                 "Provider accuracy is vendor-reported until measured in the Benchmark Laboratory.",
@@ -106,8 +116,11 @@ class HttpDetectorProvider(AnalysisMethod):
         except (ProviderResponseError, json.JSONDecodeError) as exc:
             return self.result(RunStatus.FAILED, f"Provider response rejected: {exc}")
         return self.result(
-            RunStatus.COMPLETED, "Provider score recorded; not interpreted without a validated threshold.",
-            score=body["score"], score_semantics=body["score_semantics"], output=body,
+            RunStatus.COMPLETED,
+            "Provider score recorded; not interpreted without a validated threshold.",
+            score=body["score"],
+            score_semantics=body["score_semantics"],
+            output=body,
             config={"provider_id": self.provider_id, "timeout_s": timeout},
         )
 
@@ -115,26 +128,31 @@ class HttpDetectorProvider(AnalysisMethod):
 class LocalOnnxClassifier(AnalysisMethod):
     """Model directory layout: ``model.onnx`` + ``aegis_model.json``::
 
-        {"name": "...", "version": "...", "license": "...", "positive_index": 1,
-         "input": {"kind": "image", "size": 224, "mean": [..], "std": [..]}   # or
-         "input": {"kind": "audio", "sample_rate": 16000, "samples": 64600},
-         "calibration": {...optional, validated: true, threshold: ...}}
+    {"name": "...", "version": "...", "license": "...", "positive_index": 1,
+     "input": {"kind": "image", "size": 224, "mean": [..], "std": [..]}   # or
+     "input": {"kind": "audio", "sample_rate": 16000, "samples": 64600},
+     "calibration": {...optional, validated: true, threshold: ...}}
     """
 
     def __init__(self, method_id: str, modality: Modality, env_key: str, name: str, refs: tuple[str, ...]) -> None:
         self.env_key = env_key
         self.info = MethodInfo(
-            id=method_id, name=name, version="1.0.0", modalities=(modality,) if modality != Modality.AUDIO
-            else (Modality.AUDIO, Modality.VIDEO),
+            id=method_id,
+            name=name,
+            version="1.0.0",
+            modalities=(modality,) if modality != Modality.AUDIO else (Modality.AUDIO, Modality.VIDEO),
             evidence_class=EvidenceClass.STATISTICAL_INFERENCE,
             implementation=ImplementationStatus.REQUIRES_CONFIGURATION,
             description=f"Local ONNX model configured via {env_key}.",
-            output_semantics="Model output for the positive (synthetic) class; uncalibrated unless a validated profile exists.",
+            output_semantics=(
+                "Model output for the positive (synthetic) class; uncalibrated unless a validated profile exists."
+            ),
             limitations=(
                 "Learned detectors degrade on unseen generators, compression and re-recording.",
                 "No identity, nationality or intent is inferred from any output.",
             ),
-            references=refs, requires=(env_key, "onnxruntime"),
+            references=refs,
+            requires=(env_key, "onnxruntime"),
         )
 
     def _dir(self) -> Path | None:
@@ -180,11 +198,17 @@ class LocalOnnxClassifier(AnalysisMethod):
         flagged = (score >= cal["threshold"]) if cal and "threshold" in cal else None
         return self.result(
             RunStatus.COMPLETED,
-            "Model output recorded; " + ("compared with a validated threshold." if flagged is not None
-                                          else "no validated threshold, so it is not interpreted."),
-            score=score, score_semantics="softmax output for the positive class", flagged=flagged,
-            calibrated=False, output={"model": {k: card.get(k) for k in ("name", "version", "license")},
-                                      "calibration_profile": cal},
+            "Model output recorded; "
+            + (
+                "compared with a validated threshold."
+                if flagged is not None
+                else "no validated threshold, so it is not interpreted."
+            ),
+            score=score,
+            score_semantics="softmax output for the positive class",
+            flagged=flagged,
+            calibrated=False,
+            output={"model": {k: card.get(k) for k in ("name", "version", "license")}, "calibration_profile": cal},
         )
 
 
@@ -192,7 +216,9 @@ def run_tool(args: list[str], timeout: int = 120, max_output: int = 50_000_000) 
     """Run ffprobe/ffmpeg without a shell, with timeout and output cap."""
     proc = subprocess.run(args, capture_output=True, timeout=timeout, check=False)  # noqa: S603
     if proc.returncode != 0:
-        raise RuntimeError(f"{Path(args[0]).name} exited with {proc.returncode}: {proc.stderr[-400:].decode(errors='replace')}")
+        raise RuntimeError(
+            f"{Path(args[0]).name} exited with {proc.returncode}: {proc.stderr[-400:].decode(errors='replace')}"
+        )
     if len(proc.stdout) > max_output:
         raise RuntimeError("tool output exceeded the safety limit")
     return proc.stdout

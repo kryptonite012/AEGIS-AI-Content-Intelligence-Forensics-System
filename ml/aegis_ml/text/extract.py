@@ -19,7 +19,8 @@ MAX_EXTRACTED_CHARS = 2_000_000
 MIN_TOKENS_FOR_ANALYSIS = 50  # below this AEGIS reports insufficient evidence for text detectors
 
 _INJECTION_PATTERNS = re.compile(
-    r"(ignore (all |any )?(previous |prior |the above )?(instructions|prompts)|system prompt|you are (now )?an? (ai|assistant)|"
+    r"(ignore (all |any )?(previous |prior |the above )?(instructions|"
+    r"prompts)|system prompt|you are (now )?an? (ai|assistant)|"
     r"disregard (the )?(above|previous))",
     re.IGNORECASE,
 )

@@ -14,8 +14,16 @@ import os
 from pathlib import Path
 from typing import Any
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, EvidenceClass, ImplementationStatus, MethodInfo
-from aegis_ml.core import MethodResult, Modality, RunStatus
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+)
 
 IPTC_AI_SOURCE_TYPES = {
     "trainedAlgorithmicMedia",
@@ -26,7 +34,14 @@ IPTC_AI_SOURCE_TYPES = {
 IPTC_CAPTURE_SOURCE_TYPES = {"digitalCapture", "negativeFilm", "positiveFilm", "print", "minorHumanEdits"}
 
 C2PA_MIME = {
-    "image/jpeg", "image/png", "image/webp", "audio/wav", "audio/mpeg", "audio/mp4", "video/mp4", "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "audio/wav",
+    "audio/mpeg",
+    "audio/mp4",
+    "video/mp4",
+    "application/pdf",
 }
 
 
@@ -61,16 +76,23 @@ def summarise_manifest_store(store: dict[str, Any], validation: dict[str, Any] |
     for a in active.get("assertions", []):
         if a.get("label", "").startswith("c2pa.actions"):
             for act in (a.get("data") or {}).get("actions", []):
-                actions.append({
-                    "action": act.get("action"),
-                    "digital_source_type": _source_type_name(act.get("digitalSourceType")),
-                    "software_agent": (act.get("softwareAgent") or {}).get("name")
-                    if isinstance(act.get("softwareAgent"), dict) else act.get("softwareAgent"),
-                    "when": act.get("when"),
-                })
+                actions.append(
+                    {
+                        "action": act.get("action"),
+                        "digital_source_type": _source_type_name(act.get("digitalSourceType")),
+                        "software_agent": (act.get("softwareAgent") or {}).get("name")
+                        if isinstance(act.get("softwareAgent"), dict)
+                        else act.get("softwareAgent"),
+                        "when": act.get("when"),
+                    }
+                )
     ingredients = [
-        {"title": i.get("title"), "relationship": i.get("relationship"), "format": i.get("format"),
-         "has_manifest": bool(i.get("active_manifest") or i.get("manifest_data"))}
+        {
+            "title": i.get("title"),
+            "relationship": i.get("relationship"),
+            "format": i.get("format"),
+            "has_manifest": bool(i.get("active_manifest") or i.get("manifest_data")),
+        }
         for i in active.get("ingredients", [])
     ]
     am = (validation or {}).get("activeManifest", {})
@@ -83,9 +105,14 @@ def summarise_manifest_store(store: dict[str, Any], validation: dict[str, Any] |
         "active_manifest": active_label,
         "title": active.get("title"),
         "claim_generator": [{"name": g.get("name"), "version": g.get("version")} for g in gen]
-        if isinstance(gen, list) else gen,
-        "signature": {"algorithm": sig.get("alg"), "issuer": sig.get("issuer"), "common_name": sig.get("common_name"),
-                      "time": sig.get("time")},
+        if isinstance(gen, list)
+        else gen,
+        "signature": {
+            "algorithm": sig.get("alg"),
+            "issuer": sig.get("issuer"),
+            "common_name": sig.get("common_name"),
+            "time": sig.get("time"),
+        },
         "actions": actions,
         "ingredients": ingredients,
         "declared_ai_source": bool(source_types & IPTC_AI_SOURCE_TYPES),
@@ -136,52 +163,87 @@ class C2PAVerifier(AnalysisMethod):
 
         data = inp.original_path.read_bytes()
         ctx, anchors = _context()
-        cfg = {"trust_anchors": anchors or "none configured", "remote_manifests": "not fetched",
-               "sdk_version": c2pa.sdk_version()}
+        cfg = {
+            "trust_anchors": anchors or "none configured",
+            "remote_manifests": "not fetched",
+            "sdk_version": c2pa.sdk_version(),
+        }
         try:
             reader = c2pa.Reader.try_create(inp.mime_type, io.BytesIO(data), context=ctx)
         except c2pa.C2paError.NotSupported:
-            return self.result(RunStatus.UNSUPPORTED_INPUT, "The C2PA library cannot read this file's structure.",
-                               output={"state": ProvenanceState.UNSUPPORTED}, config=cfg)
+            return self.result(
+                RunStatus.UNSUPPORTED_INPUT,
+                "The C2PA library cannot read this file's structure.",
+                output={"state": ProvenanceState.UNSUPPORTED},
+                config=cfg,
+            )
         except c2pa.C2paError as exc:
             # A manifest exists but is structurally broken: verification failed.
             return self.result(
-                RunStatus.COMPLETED, "Provenance verification failed: the manifest could not be parsed.",
-                output={"state": ProvenanceState.INVALID, "error": str(exc)[:500]}, flagged=None, config=cfg,
+                RunStatus.COMPLETED,
+                "Provenance verification failed: the manifest could not be parsed.",
+                output={"state": ProvenanceState.INVALID, "error": str(exc)[:500]},
+                flagged=None,
+                config=cfg,
             )
         if reader is None:
-            return self.result(RunStatus.COMPLETED, "No supported provenance record found.",
-                                output={"state": ProvenanceState.NO_MANIFEST}, config=cfg)
+            return self.result(
+                RunStatus.COMPLETED,
+                "No supported provenance record found.",
+                output={"state": ProvenanceState.NO_MANIFEST},
+                config=cfg,
+            )
         with reader:
             state = reader.get_validation_state()
             summary = summarise_manifest_store(json.loads(reader.json()), reader.get_validation_results(), state)
             summary["embedded"] = reader.is_embedded()
         integrity_failures = [c for c in summary["failure_codes"] if c != "signingCredential.untrusted"]
         if state == "Trusted" and not integrity_failures:
-            pstate, text = ProvenanceState.TRUSTED, (
-                "Verification succeeded for the supported provenance record; the signer chains to a configured trust anchor."
+            pstate, text = (
+                ProvenanceState.TRUSTED,
+                (
+                    "Verification succeeded for the supported provenance record; "
+                    "the signer chains to a configured trust anchor."
+                ),
             )
         elif state in ("Valid", "Trusted") and not integrity_failures:
-            pstate, text = ProvenanceState.VALID_UNTRUSTED, (
-                "The manifest's signature and hashes validate, but the signer is not trusted by this deployment."
+            pstate, text = (
+                ProvenanceState.VALID_UNTRUSTED,
+                ("The manifest's signature and hashes validate, but the signer is not trusted by this deployment."),
             )
         else:
-            pstate, text = ProvenanceState.INVALID, (
-                f"Provenance verification failed ({', '.join(integrity_failures) or state})."
+            pstate, text = (
+                ProvenanceState.INVALID,
+                (f"Provenance verification failed ({', '.join(integrity_failures) or state})."),
             )
         summary["state"] = pstate
         warnings = []
         if pstate != ProvenanceState.INVALID and summary["declared_ai_source"]:
-            warnings.append("The manifest declares AI-generated content (IPTC digital source type). "
-                            "This is the signer's claim.")
+            warnings.append(
+                "The manifest declares AI-generated content (IPTC digital source type). This is the signer's claim."
+            )
         return self.result(RunStatus.COMPLETED, text, output=summary, config=cfg, warnings=warnings)
 
 
 # ---------------------------------------------------------------------------
 
 KNOWN_GENERATOR_MARKERS = (
-    "stable diffusion", "midjourney", "dall-e", "dall·e", "firefly", "imagen", "novelai", "comfyui",
-    "automatic1111", "invokeai", "flux", "elevenlabs", "sora", "runway", "pika", "leonardo",
+    "stable diffusion",
+    "midjourney",
+    "dall-e",
+    "dall·e",
+    "firefly",
+    "imagen",
+    "novelai",
+    "comfyui",
+    "automatic1111",
+    "invokeai",
+    "flux",
+    "elevenlabs",
+    "sora",
+    "runway",
+    "pika",
+    "leonardo",
 )
 
 
@@ -197,7 +259,9 @@ class DeclaredMetadataMethod(AnalysisMethod):
         evidence_class=EvidenceClass.DECLARED_METADATA,
         implementation=ImplementationStatus.OPERATIONAL,
         description="Looks for unsigned tool and source-type declarations embedded in the file.",
-        output_semantics="Lists declarations as found. They are claims, trivially added or removed, never verification.",
+        output_semantics=(
+            "Lists declarations as found. They are claims, trivially added or removed, never verification."
+        ),
         limitations=(
             "Absence of declarations is the normal case and indicates nothing.",
             "Declarations can be forged or copied between files.",
@@ -213,14 +277,22 @@ class DeclaredMetadataMethod(AnalysisMethod):
 
             img = Image.open(inp.original_path)
             for k, v in (img.info or {}).items():
-                if isinstance(v, str) and k.lower() in ("parameters", "prompt", "workflow", "software", "comment",
-                                                         "description", "source", "xml:com.adobe.xmp"):
+                if isinstance(v, str) and k.lower() in (
+                    "parameters",
+                    "prompt",
+                    "workflow",
+                    "software",
+                    "comment",
+                    "description",
+                    "source",
+                    "xml:com.adobe.xmp",
+                ):
                     found.append({"field": f"png/info:{k}", "value": v[:500]})
             xmp = img.info.get("xmp")
             if isinstance(xmp, bytes):
                 xmp = xmp.decode("utf-8", errors="replace")
             if isinstance(xmp, str) and "DigitalSourceType" in xmp:
-                found.append({"field": "xmp:DigitalSourceType", "value": xmp[xmp.find("DigitalSourceType"):][:300]})
+                found.append({"field": "xmp:DigitalSourceType", "value": xmp[xmp.find("DigitalSourceType") :][:300]})
             for k in ("Software", "ImageDescription", "Artist", "UserComment", "XPComment"):
                 if v := exif_summary(img).get(k):
                     found.append({"field": f"exif:{k}", "value": v})
@@ -242,5 +314,8 @@ class DeclaredMetadataMethod(AnalysisMethod):
             text = f"{len(found)} unsigned tool/description fields found; none names a known generator."
         else:
             text = "No declared generation metadata found (common; indicates nothing)."
-        return self.result(RunStatus.COMPLETED, text,
-                           output={"declarations": found, "generator_markers": markers, "declares_ai_source_type": ai_source})
+        return self.result(
+            RunStatus.COMPLETED,
+            text,
+            output={"declarations": found, "generator_markers": markers, "declares_ai_source_type": ai_source},
+        )

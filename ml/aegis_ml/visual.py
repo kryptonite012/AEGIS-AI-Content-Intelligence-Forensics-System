@@ -8,9 +8,7 @@ import numpy as np
 from PIL import Image, ImageDraw
 
 # Perceptually ordered dark-to-bright ramp (midnight -> blue -> cyan -> near white).
-_STOPS = np.array(
-    [[8, 12, 28], [22, 40, 98], [37, 99, 235], [34, 211, 238], [224, 250, 255]], dtype=float
-)
+_STOPS = np.array([[8, 12, 28], [22, 40, 98], [37, 99, 235], [34, 211, 238], [224, 250, 255]], dtype=float)
 
 
 def colormap(values: np.ndarray) -> np.ndarray:

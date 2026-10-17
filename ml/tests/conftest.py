@@ -1,5 +1,4 @@
 import pytest
-
 from aegis_ml import fixtures
 from aegis_ml.core import AnalysisInput, Modality
 
@@ -8,6 +7,7 @@ from aegis_ml.core import AnalysisInput, Modality
 def make_input(tmp_path):
     def _make(path, modality, mime, **kw):
         return AnalysisInput(modality=modality, mime_type=mime, original_path=path, sha256="0" * 64, **kw)
+
     return _make
 
 

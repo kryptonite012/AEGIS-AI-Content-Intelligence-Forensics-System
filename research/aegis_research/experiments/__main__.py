@@ -1,7 +1,7 @@
 """Run reliability experiments and write machine-readable outputs plus a manifest.
 
-    python -m aegis_research.experiments --all --out research/results
-    python -m aegis_research.experiments exp1_base_rate exp9_fpr_calibration --plots
+python -m aegis_research.experiments --all --out research/results
+python -m aegis_research.experiments exp1_base_rate exp9_fpr_calibration --plots
 """
 
 from __future__ import annotations
@@ -42,10 +42,15 @@ def run(ids: list[str], out: Path, plots: bool) -> dict:
         payload = json.dumps(result, indent=2, sort_keys=True)
         path = out / f"{exp_id}.json"
         path.write_text(payload)
-        entries.append({"id": exp_id, "kind": result["kind"], "file": path.name,
-                        "sha256": hashlib.sha256(payload.encode()).hexdigest(),
-                        "config_sha256": hashlib.sha256(json.dumps(result["config"], sort_keys=True)
-                                                        .encode()).hexdigest()})
+        entries.append(
+            {
+                "id": exp_id,
+                "kind": result["kind"],
+                "file": path.name,
+                "sha256": hashlib.sha256(payload.encode()).hexdigest(),
+                "config_sha256": hashlib.sha256(json.dumps(result["config"], sort_keys=True).encode()).hexdigest(),
+            }
+        )
         if plots:
             from aegis_research.experiments.plots import plot_experiment
 
@@ -60,7 +65,7 @@ def run(ids: list[str], out: Path, plots: bool) -> dict:
         "platform": platform.platform(),
         "experiments": entries,
         "disclaimer": "Analytical and simulated results only. None of these outputs measure a deployed "
-                      "detector on real content.",
+        "detector on real content.",
     }
     (out / "manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest

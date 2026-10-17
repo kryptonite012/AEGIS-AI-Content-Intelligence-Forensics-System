@@ -12,8 +12,17 @@ import statistics
 import zlib
 from collections import Counter
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, EvidenceClass, ImplementationStatus, MethodInfo
-from aegis_ml.core import MethodResult, Modality, RunStatus, Segment
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+    Segment,
+)
 from aegis_ml.text.segment import paragraphs, sentences
 from aegis_ml.text.tokenize import TOKENIZER_ID, tokenize, words
 

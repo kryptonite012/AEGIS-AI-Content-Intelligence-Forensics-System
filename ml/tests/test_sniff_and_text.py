@@ -1,7 +1,6 @@
 import zipfile
 
 import pytest
-
 from aegis_ml import fixtures
 from aegis_ml.core import Modality, RunStatus
 from aegis_ml.evidence.sniff import UnsafeFileError, sniff
@@ -26,12 +25,15 @@ def test_sniff_by_content_not_extension(tmp_path, jpeg, wav, mp4):
     assert sniff(docx).extension == "docx"
 
 
-@pytest.mark.parametrize("payload,msg", [
-    (b"MZ\x90\x00binary", "executable"),
-    (b"\x7fELF\x02\x01", "executable"),
-    (b"", "empty"),
-    (b"\x00\x01\x02\x03\xff\xfe\x00", "unrecognised"),
-])
+@pytest.mark.parametrize(
+    "payload,msg",
+    [
+        (b"MZ\x90\x00binary", "executable"),
+        (b"\x7fELF\x02\x01", "executable"),
+        (b"", "empty"),
+        (b"\x00\x01\x02\x03\xff\xfe\x00", "unrecognised"),
+    ],
+)
 def test_sniff_rejects(tmp_path, payload, msg):
     p = tmp_path / "f.bin"
     p.write_bytes(payload)
@@ -65,8 +67,10 @@ def test_extract_txt_pdf_docx(tmp_path):
     assert r.sufficient_for_detection
     pdf = extract_text(fixtures.make_pdf(tmp_path / "a.pdf", fixtures.HUMAN_STYLE_SAMPLE), "application/pdf")
     assert "herons" in pdf.text and pdf.pages == 1
-    docx = extract_text(fixtures.make_docx(tmp_path / "a.docx", ["First para.", "Second para."]),
-                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+    docx = extract_text(
+        fixtures.make_docx(tmp_path / "a.docx", ["First para.", "Second para."]),
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    )
     assert docx.paragraph_count == 2 and not docx.sufficient_for_detection
 
 
@@ -93,7 +97,9 @@ def test_language_identification_hindi_english():
 
 
 def test_descriptive_statistics_never_scores(tmp_path, make_input):
-    r = DescriptiveTextStatistics().run(make_input(tmp_path, Modality.TEXT, "text/plain", text=fixtures.HUMAN_STYLE_SAMPLE))
+    r = DescriptiveTextStatistics().run(
+        make_input(tmp_path, Modality.TEXT, "text/plain", text=fixtures.HUMAN_STYLE_SAMPLE)
+    )
     assert r.status == RunStatus.COMPLETED and r.score is None and r.flagged is None
     assert r.output["words"] > 50
 
@@ -117,9 +123,12 @@ def test_reference_watermark_end_to_end(tmp_path, make_input):
     assert r3.flagged is False
     assert key.decode() not in str(r1.to_dict())  # key never appears in output
     wrong = ReferenceWatermarkVerifier(key=b"another-deployment-key-999").run(
-        make_input(tmp_path, Modality.TEXT, "text/plain", text=marked))
+        make_input(tmp_path, Modality.TEXT, "text/plain", text=marked)
+    )
     assert wrong.flagged is False
     short = v.run(make_input(tmp_path, Modality.TEXT, "text/plain", text="Bade kilo."))
     assert short.status == RunStatus.INSUFFICIENT_INPUT
-    assert ReferenceWatermarkVerifier(key=b"").run(
-        make_input(tmp_path, Modality.TEXT, "text/plain", text=marked)).status == RunStatus.UNAVAILABLE
+    assert (
+        ReferenceWatermarkVerifier(key=b"").run(make_input(tmp_path, Modality.TEXT, "text/plain", text=marked)).status
+        == RunStatus.UNAVAILABLE
+    )

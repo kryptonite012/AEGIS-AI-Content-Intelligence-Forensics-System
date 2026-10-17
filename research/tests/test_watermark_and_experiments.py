@@ -1,9 +1,8 @@
 import numpy as np
 import pytest
-from scipy import stats
-
 from aegis_research import watermark as wm
 from aegis_research.experiments import EXPERIMENTS
+from scipy import stats
 
 KEY = b"test-key-0123456789abcdef"
 

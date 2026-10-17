@@ -14,19 +14,92 @@ import numpy as np
 from PIL import ExifTags, Image, ImageCms
 from scipy import ndimage
 
-from aegis_ml.core import AnalysisInput, AnalysisMethod, Artifact, EvidenceClass, ImplementationStatus
-from aegis_ml.core import MethodInfo, MethodResult, Modality, RunStatus
+from aegis_ml.core import (
+    AnalysisInput,
+    AnalysisMethod,
+    Artifact,
+    EvidenceClass,
+    ImplementationStatus,
+    MethodInfo,
+    MethodResult,
+    Modality,
+    RunStatus,
+)
 from aegis_ml.visual import heat_png, normalise, png_bytes
 
 Image.MAX_IMAGE_PIXELS = 80_000_000  # decompression-bomb guard (Pillow raises above 2x this)
 ANALYSIS_MAX_SIDE = 1024
 
 # Standard JPEG (Annex K) luminance quantisation table, natural order.
-_STD_LUMA = np.array([
-    16, 11, 10, 16, 24, 40, 51, 61, 12, 12, 14, 19, 26, 58, 60, 55, 14, 13, 16, 24, 40, 57, 69, 56,
-    14, 17, 22, 29, 51, 87, 80, 62, 18, 22, 37, 56, 68, 109, 103, 77, 24, 35, 55, 64, 81, 104, 113, 92,
-    49, 64, 78, 87, 103, 121, 120, 101, 72, 92, 95, 98, 112, 100, 103, 99,
-], dtype=float)
+_STD_LUMA = np.array(
+    [
+        16,
+        11,
+        10,
+        16,
+        24,
+        40,
+        51,
+        61,
+        12,
+        12,
+        14,
+        19,
+        26,
+        58,
+        60,
+        55,
+        14,
+        13,
+        16,
+        24,
+        40,
+        57,
+        69,
+        56,
+        14,
+        17,
+        22,
+        29,
+        51,
+        87,
+        80,
+        62,
+        18,
+        22,
+        37,
+        56,
+        68,
+        109,
+        103,
+        77,
+        24,
+        35,
+        55,
+        64,
+        81,
+        104,
+        113,
+        92,
+        49,
+        64,
+        78,
+        87,
+        103,
+        121,
+        120,
+        101,
+        72,
+        92,
+        95,
+        98,
+        112,
+        100,
+        103,
+        99,
+    ],
+    dtype=float,
+)
 
 _SENSITIVE_EXIF = {"GPSInfo", "BodySerialNumber", "CameraOwnerName", "LensSerialNumber", "ImageUniqueID"}
 
@@ -137,9 +210,12 @@ class ImageMetadataMethod(AnalysisMethod):
         warnings = []
         if any(v == "[present — redacted]" for v in exif.values()):
             warnings.append("Sensitive EXIF fields (e.g. GPS, serial numbers) are present and redacted in this view.")
-        return self.result(RunStatus.COMPLETED,
-                           f"{img.format} {img.width}x{img.height}; EXIF {out['exif_status']}.",
-                           output=out, warnings=warnings)
+        return self.result(
+            RunStatus.COMPLETED,
+            f"{img.format} {img.width}x{img.height}; EXIF {out['exif_status']}.",
+            output=out,
+            warnings=warnings,
+        )
 
 
 class FrequencySpectrumMethod(AnalysisMethod):
@@ -192,11 +268,15 @@ class FrequencySpectrumMethod(AnalysisMethod):
                 "periodic_peak_strength": round(peak, 3),
                 "radial_profile": [round(float(v), 4) for v in np.log10(radial[:: max(1, len(radial) // 64)] + 1e-12)],
             },
-            artifacts=[Artifact(
-                "frequency_spectrum.png", "image/png", heat_png(logspec),
-                "Centred log-magnitude spectrum; centre = low frequencies, edges = high frequencies.",
-                "Cannot establish that an image is synthetic or authentic; periodic patterns have benign causes.",
-            )],
+            artifacts=[
+                Artifact(
+                    "frequency_spectrum.png",
+                    "image/png",
+                    heat_png(logspec),
+                    "Centred log-magnitude spectrum; centre = low frequencies, edges = high frequencies.",
+                    "Cannot establish that an image is synthetic or authentic; periodic patterns have benign causes.",
+                )
+            ],
             config={"window": "hann", "analysis_max_side": ANALYSIS_MAX_SIDE},
         )
 
@@ -210,9 +290,12 @@ class NoiseResidualMethod(AnalysisMethod):
         evidence_class=EvidenceClass.MEDIA_FORENSIC_OBSERVATION,
         implementation=ImplementationStatus.OPERATIONAL,
         description="High-pass residual (image minus 3x3 median) and block-wise residual variance map.",
-        output_semantics="Spatial variation of fine-grain noise. Regions with very different residual energy may merit review.",
+        output_semantics=(
+            "Spatial variation of fine-grain noise. Regions with very different residual energy may merit review."
+        ),
         limitations=(
-            "Residual energy varies with texture, focus, denoising and compression; inconsistency is not proof of splicing.",
+            "Residual energy varies with texture, focus, denoising and "
+            "compression; inconsistency is not proof of splicing.",
             "Not a PRNU camera fingerprint; no device attribution is attempted.",
         ),
     )
@@ -226,7 +309,7 @@ class NoiseResidualMethod(AnalysisMethod):
             return self.result(RunStatus.INSUFFICIENT_INPUT, "Image too small for block-wise residual analysis.")
         blocks = resid[: hb * b, : wb * b].reshape(hb, b, wb, b).std(axis=(1, 3))
         cv = float(blocks.std() / blocks.mean()) if blocks.mean() else None
-        outlier = (np.abs(blocks - np.median(blocks)) > 4 * (np.median(np.abs(blocks - np.median(blocks))) + 1e-6))
+        outlier = np.abs(blocks - np.median(blocks)) > 4 * (np.median(np.abs(blocks - np.median(blocks))) + 1e-6)
         return self.result(
             RunStatus.COMPLETED,
             f"Residual computed; {int(outlier.sum())} of {outlier.size} blocks deviate strongly from the median.",
@@ -239,12 +322,20 @@ class NoiseResidualMethod(AnalysisMethod):
                 "outlier_block_fraction": float(outlier.mean()),
             },
             artifacts=[
-                Artifact("noise_residual.png", "image/png", png_bytes((normalise(np.abs(resid)) * 255).clip(0, 255).astype(np.uint8)),
-                         "Absolute high-pass residual (amplified). Bright = strong fine-grain detail or noise.",
-                         "Cannot localise manipulation by itself; textured regions are naturally bright."),
-                Artifact("residual_block_map.png", "image/png", heat_png(np.kron(blocks, np.ones((8, 8)))),
-                         "Residual standard deviation per 32x32 block.",
-                         "Differences can reflect content, focus or compression rather than editing."),
+                Artifact(
+                    "noise_residual.png",
+                    "image/png",
+                    png_bytes((normalise(np.abs(resid)) * 255).clip(0, 255).astype(np.uint8)),
+                    "Absolute high-pass residual (amplified). Bright = strong fine-grain detail or noise.",
+                    "Cannot localise manipulation by itself; textured regions are naturally bright.",
+                ),
+                Artifact(
+                    "residual_block_map.png",
+                    "image/png",
+                    heat_png(np.kron(blocks, np.ones((8, 8)))),
+                    "Residual standard deviation per 32x32 block.",
+                    "Differences can reflect content, focus or compression rather than editing.",
+                ),
             ],
         )
 
@@ -278,11 +369,21 @@ class ErrorLevelAnalysisMethod(AnalysisMethod):
         re = Image.open(io.BytesIO(buf.getvalue())).convert("RGB")
         diff = np.abs(np.asarray(img, dtype=np.int16) - np.asarray(re, dtype=np.int16)).max(axis=2)
         return self.result(
-            RunStatus.COMPLETED, "Error level map computed (qualitative).",
-            output={"mean_error_level": float(diff.mean()), "p99_error_level": float(np.percentile(diff, 99)),
-                    "recompression_quality": 90},
-            artifacts=[Artifact("error_level.png", "image/png", heat_png(diff.astype(float)),
-                                "Per-pixel maximum channel difference after re-compression at quality 90.",
-                                "Cannot establish manipulation; high-contrast edges and text are always bright.")],
+            RunStatus.COMPLETED,
+            "Error level map computed (qualitative).",
+            output={
+                "mean_error_level": float(diff.mean()),
+                "p99_error_level": float(np.percentile(diff, 99)),
+                "recompression_quality": 90,
+            },
+            artifacts=[
+                Artifact(
+                    "error_level.png",
+                    "image/png",
+                    heat_png(diff.astype(float)),
+                    "Per-pixel maximum channel difference after re-compression at quality 90.",
+                    "Cannot establish manipulation; high-contrast edges and text are always bright.",
+                )
+            ],
             config={"quality": 90},
         )

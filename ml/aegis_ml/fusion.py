@@ -75,8 +75,15 @@ def fuse(results: list[dict[str, Any]]) -> FusionResult:
 
     for r in results:
         cls, status, mid = r["evidence_class"], r["status"], r["method_id"]
-        by_class.setdefault(cls, []).append({"method_id": mid, "status": status, "summary": r.get("summary"),
-                                             "flagged": r.get("flagged"), "calibrated": r.get("calibrated", False)})
+        by_class.setdefault(cls, []).append(
+            {
+                "method_id": mid,
+                "status": status,
+                "summary": r.get("summary"),
+                "flagged": r.get("flagged"),
+                "calibrated": r.get("calibrated", False),
+            }
+        )
         if status in ("unavailable", "blocked_by_policy"):
             missing.append({"method_id": mid, "reason": r.get("summary", "")})
             continue
@@ -120,15 +127,23 @@ def fuse(results: list[dict[str, Any]]) -> FusionResult:
             reasons.append("The provenance signature validates but the signer is not in this deployment's trust list.")
     if prov_failed:
         categories.append(Outcome.PROVENANCE_FAILED)
-        steps.append("Obtain an original copy from the source; verification failure may indicate modification after signing.")
+        steps.append(
+            "Obtain an original copy from the source; verification failure may indicate modification after signing."
+        )
     if watermark_detected:
         categories.append(Outcome.RECOGNIZED_WATERMARK)
-    ai_indicators = flagged_stat + watermark_detected + declared_ai + (
-        [prov_verified["method_id"]] if prov_verified and prov_declares_ai else [])
+    ai_indicators = (
+        flagged_stat
+        + watermark_detected
+        + declared_ai
+        + ([prov_verified["method_id"]] if prov_verified and prov_declares_ai else [])
+    )
     if len(flagged_stat) >= 2:
         categories.append(Outcome.MULTIPLE_SIGNALS_CONSISTENT_WITH_AI)
-        reasons.append("Statistical detectors may share training data or failure modes; their dependence is "
-                       "unknown, so agreement is not treated as independent corroboration.")
+        reasons.append(
+            "Statistical detectors may share training data or failure modes; their dependence is "
+            "unknown, so agreement is not treated as independent corroboration."
+        )
     elif len(flagged_stat) == 1:
         categories.append(Outcome.SOME_SIGNALS_CONSISTENT_WITH_AI)
     agreeing.extend(ai_indicators)
@@ -136,9 +151,11 @@ def fuse(results: list[dict[str, Any]]) -> FusionResult:
     # Contradictions: signed capture claim vs AI indicators, or AI flag vs non-flag among validated detectors.
     if prov_verified and prov_declares_capture and (flagged_stat or watermark_detected):
         conflicting.extend([prov_verified["method_id"], *flagged_stat, *watermark_detected])
-        reasons.append("A validated provenance record declares a capture pathway while other signals are consistent "
-                       "with AI generation. The provenance record is not rejected automatically; the discrepancy "
-                       "requires review.")
+        reasons.append(
+            "A validated provenance record declares a capture pathway while other signals are consistent "
+            "with AI generation. The provenance record is not rejected automatically; the discrepancy "
+            "requires review."
+        )
     if flagged_stat and unflagged_stat:
         conflicting.extend([*flagged_stat, *unflagged_stat])
         reasons.append("Validated statistical detectors disagree.")
@@ -149,36 +166,63 @@ def fuse(results: list[dict[str, Any]]) -> FusionResult:
     if not categories:
         if any_interpretable:
             categories.append(Outcome.INCONCLUSIVE)
-            reasons.append("No interpretable signal is consistent with AI generation. A negative or low result does "
-                           "not establish human authorship.")
+            reasons.append(
+                "No interpretable signal is consistent with AI generation. A negative or low result does "
+                "not establish human authorship."
+            )
         else:
             categories.append(Outcome.NO_RELIABLE_CONCLUSION)
             reasons.append("No method with a validated interpretation produced a result for this evidence.")
     if not_interpreted:
-        reasons.append(f"{len(not_interpreted)} statistical output(s) have no validated operating threshold and are "
-                       "shown without interpretation.")
-        steps.append("Run the detector through the Benchmark Laboratory on representative labelled data to "
-                     "establish a validated operating point.")
+        reasons.append(
+            f"{len(not_interpreted)} statistical output(s) have no validated operating threshold and are "
+            "shown without interpretation."
+        )
+        steps.append(
+            "Run the detector through the Benchmark Laboratory on representative labelled data to "
+            "establish a validated operating point."
+        )
     if missing:
         steps.append("Configure unavailable methods if appropriate (see System Health).")
     if failed:
         reasons.append(f"{len(failed)} method(s) failed; failures are not negative results.")
         steps.append("Re-run failed methods after investigating the error.")
+    if declared_ai:
+        reasons.append(
+            "Unsigned file metadata declares a generation tool. Such declarations are unverified claims "
+            "that can be added, copied or removed; they are listed but not treated as verification."
+        )
+    if prov_verified and prov_declares_ai:
+        reasons.append("The validated provenance record itself declares AI generation (signer's claim).")
     if watermark_checked and not watermark_detected:
         reasons.append("No supported watermark was detected. This does not indicate human authorship.")
     if not prov_verified and not prov_failed:
         steps.append("Request the original file or source records (drafts, capture devices, publication history).")
     steps.append("Collect independent process or documentary evidence before any decision affecting a person.")
 
-    requires_review = any(c in categories for c in (
-        Outcome.SOME_SIGNALS_CONSISTENT_WITH_AI, Outcome.MULTIPLE_SIGNALS_CONSISTENT_WITH_AI,
-        Outcome.RECOGNIZED_WATERMARK, Outcome.PROVENANCE_FAILED, Outcome.CONTRADICTORY_EVIDENCE))
+    requires_review = any(
+        c in categories
+        for c in (
+            Outcome.SOME_SIGNALS_CONSISTENT_WITH_AI,
+            Outcome.MULTIPLE_SIGNALS_CONSISTENT_WITH_AI,
+            Outcome.RECOGNIZED_WATERMARK,
+            Outcome.PROVENANCE_FAILED,
+            Outcome.CONTRADICTORY_EVIDENCE,
+        )
+    )
     if requires_review:
         categories.append(Outcome.HUMAN_REVIEW_REQUIRED)
 
-    priority = [Outcome.CONTRADICTORY_EVIDENCE, Outcome.PROVENANCE_FAILED, Outcome.RECOGNIZED_WATERMARK,
-                Outcome.MULTIPLE_SIGNALS_CONSISTENT_WITH_AI, Outcome.SOME_SIGNALS_CONSISTENT_WITH_AI,
-                Outcome.PROVENANCE_VERIFIED, Outcome.INCONCLUSIVE, Outcome.NO_RELIABLE_CONCLUSION]
+    priority = [
+        Outcome.CONTRADICTORY_EVIDENCE,
+        Outcome.PROVENANCE_FAILED,
+        Outcome.RECOGNIZED_WATERMARK,
+        Outcome.MULTIPLE_SIGNALS_CONSISTENT_WITH_AI,
+        Outcome.SOME_SIGNALS_CONSISTENT_WITH_AI,
+        Outcome.PROVENANCE_VERIFIED,
+        Outcome.INCONCLUSIVE,
+        Outcome.NO_RELIABLE_CONCLUSION,
+    ]
     primary = next(p for p in priority if p in categories)
     statement = (
         f"Automated outcome: {OUTCOME_LABELS[primary]}. This describes the available evidence under policy "
@@ -196,7 +240,10 @@ def fuse(results: list[dict[str, Any]]) -> FusionResult:
         failed=failed,
         not_interpreted=not_interpreted,
         calibration_applies=any(
-            r.get("calibrated") for r in results if r["status"] == "completed" and r["evidence_class"] == "statistical_inference"),
+            r.get("calibrated")
+            for r in results
+            if r["status"] == "completed" and r["evidence_class"] == "statistical_inference"
+        ),
         uncertainty_reasons=reasons,
         suggested_next_steps=list(dict.fromkeys(steps)),
         by_class=by_class,
