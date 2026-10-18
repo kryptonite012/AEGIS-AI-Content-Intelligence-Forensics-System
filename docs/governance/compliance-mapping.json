@@ -1,0 +1,294 @@
+{
+  "version": "2026-10",
+  "disclaimer": "This mapping records the technical status of controls in this repository. It is not a statement of compliance with any law, regulation or security standard. Legal and security review is required before operational deployment.",
+  "statuses": [
+    "implemented_and_tested",
+    "partially_implemented",
+    "documentation_required",
+    "external_assessment_required",
+    "not_implemented",
+    "not_applicable"
+  ],
+  "controls": [
+    {
+      "id": "SEC-01",
+      "area": "Access control",
+      "requirement": "Role-based access control enforced server-side on every endpoint",
+      "status": "implemented_and_tested",
+      "evidence": "security/deps.py require(); apps/api/tests/test_security.py::test_role_permissions_enforced_server_side"
+    },
+    {
+      "id": "SEC-02",
+      "area": "Access control",
+      "requirement": "Organisation (tenant) isolation; identifiers from other tenants return 404",
+      "status": "implemented_and_tested",
+      "evidence": "test_cross_tenant_isolation"
+    },
+    {
+      "id": "SEC-03",
+      "area": "Access control",
+      "requirement": "Restricted access classification for sensitive cases",
+      "status": "implemented_and_tested",
+      "evidence": "test_restricted_classification"
+    },
+    {
+      "id": "SEC-04",
+      "area": "Authentication",
+      "requirement": "Argon2id password hashing, lockout after repeated failures, login rate limiting",
+      "status": "implemented_and_tested",
+      "evidence": "security/passwords.py; test_login_rate_limit_and_lockout"
+    },
+    {
+      "id": "SEC-05",
+      "area": "Authentication",
+      "requirement": "Short-lived access tokens bound to revocable server-side sessions; refresh rotation",
+      "status": "implemented_and_tested",
+      "evidence": "security/tokens.py; test_session_revocation; test_refresh_requires_csrf_header"
+    },
+    {
+      "id": "SEC-06",
+      "area": "Authentication",
+      "requirement": "Optional TOTP multi-factor authentication",
+      "status": "partially_implemented",
+      "evidence": "Enrolment and login enforcement implemented; no recovery codes or admin-enforced MFA policy; not covered by automated tests"
+    },
+    {
+      "id": "SEC-07",
+      "area": "Authentication",
+      "requirement": "Integration with institutional identity providers (SAML/OIDC)",
+      "status": "not_implemented",
+      "evidence": "Roadmap item"
+    },
+    {
+      "id": "SEC-08",
+      "area": "Input handling",
+      "requirement": "Content-based file validation; executables, macros, unsafe archives and malformed media rejected",
+      "status": "implemented_and_tested",
+      "evidence": "aegis_ml/evidence/sniff.py; test_malicious_uploads_rejected; test_zip_traversal_and_bomb_rejected"
+    },
+    {
+      "id": "SEC-09",
+      "area": "Input handling",
+      "requirement": "Malware scanning of uploads",
+      "status": "partially_implemented",
+      "evidence": "ClamAV clamd adapter implemented; not exercised in this build environment; AEGIS_REQUIRE_MALWARE_SCAN enforces presence"
+    },
+    {
+      "id": "SEC-10",
+      "area": "Input handling",
+      "requirement": "Uploaded content treated as untrusted data; instruction-like text recorded as an observation only",
+      "status": "implemented_and_tested",
+      "evidence": "text/extract.py; test_prompt_injection_text_is_flagged_as_observation"
+    },
+    {
+      "id": "SEC-11",
+      "area": "Transport & headers",
+      "requirement": "Security headers, CSP, CORS restrictions, correlation IDs",
+      "status": "implemented_and_tested",
+      "evidence": "core/middleware.py; test_error_format_and_headers"
+    },
+    {
+      "id": "SEC-12",
+      "area": "Transport & headers",
+      "requirement": "TLS termination and HSTS in production",
+      "status": "documentation_required",
+      "evidence": "Deployment guide documents a TLS-terminating reverse proxy; not configured in development"
+    },
+    {
+      "id": "SEC-13",
+      "area": "Secrets",
+      "requirement": "No secrets in responses, logs or reports; watermark keys represented by fingerprints",
+      "status": "implemented_and_tested",
+      "evidence": "test_no_secrets_in_responses; reference watermark key fingerprint"
+    },
+    {
+      "id": "SEC-14",
+      "area": "Secrets",
+      "requirement": "Managed secret store (e.g. Vault, cloud KMS)",
+      "status": "external_assessment_required",
+      "evidence": "Environment-variable injection only; integration depends on host platform"
+    },
+    {
+      "id": "SEC-15",
+      "area": "Encryption at rest",
+      "requirement": "Encryption of stored evidence and database at rest",
+      "status": "partially_implemented",
+      "evidence": "S3 backend requests SSE (AES256); local filesystem and PostgreSQL rely on host disk encryption; MFA secrets encrypted at field level"
+    },
+    {
+      "id": "SEC-16",
+      "area": "Supply chain",
+      "requirement": "Locked dependencies and vulnerability scanning",
+      "status": "partially_implemented",
+      "evidence": "uv.lock and pnpm-lock.yaml committed; make security-check runs pip-audit and pnpm audit; results depend on scan date"
+    },
+    {
+      "id": "EVD-01",
+      "area": "Evidence handling",
+      "requirement": "SHA-256 at acquisition, write-once content-addressed storage, versioned derivatives",
+      "status": "implemented_and_tested",
+      "evidence": "services/evidence.py; storage/local.py; test_storage_is_write_once; test_s3_backend_with_moto"
+    },
+    {
+      "id": "EVD-02",
+      "area": "Evidence handling",
+      "requirement": "Integrity re-verification with high-priority alert on mismatch",
+      "status": "implemented_and_tested",
+      "evidence": "test_integrity_verification_and_mismatch_alert"
+    },
+    {
+      "id": "EVD-03",
+      "area": "Evidence handling",
+      "requirement": "Legally certified chain of custody",
+      "status": "external_assessment_required",
+      "evidence": "Technical records exist; legal certification requires a validated operational process and legal review"
+    },
+    {
+      "id": "AUD-01",
+      "area": "Audit",
+      "requirement": "Append-only, hash-chained audit trail with verification",
+      "status": "implemented_and_tested",
+      "evidence": "audit/service.py; test_audit_tampering_detected"
+    },
+    {
+      "id": "AUD-02",
+      "area": "Audit",
+      "requirement": "External anchoring of the audit chain head",
+      "status": "partially_implemented",
+      "evidence": "/api/v1/audit/head exposes the head for anchoring; no automatic anchoring service"
+    },
+    {
+      "id": "GOV-01",
+      "area": "Human oversight",
+      "requirement": "Automated outcomes never trigger adverse action; human review decision required to finalise reports",
+      "status": "implemented_and_tested",
+      "evidence": "services/reports.py finalize(); test_full_text_workflow"
+    },
+    {
+      "id": "GOV-02",
+      "area": "Human oversight",
+      "requirement": "Separation of duties (case creator cannot review; author cannot finalise; requester cannot approve own deletion)",
+      "status": "implemented_and_tested",
+      "evidence": "test_state_machine_rules; test_requester_cannot_approve_own_deletion"
+    },
+    {
+      "id": "GOV-03",
+      "area": "Human oversight",
+      "requirement": "Appeal and correction workflow",
+      "status": "implemented_and_tested",
+      "evidence": "test_appeal_workflow; report corrections create new versions"
+    },
+    {
+      "id": "GOV-04",
+      "area": "Privacy",
+      "requirement": "Data minimisation: no demographic collection, no biometric identification, no speaker/face identification",
+      "status": "implemented_and_tested",
+      "evidence": "No such fields or methods exist; subgroup data only from evaluation datasets"
+    },
+    {
+      "id": "GOV-05",
+      "area": "Privacy",
+      "requirement": "Retention policies, legal hold, two-person deletion with tombstones",
+      "status": "implemented_and_tested",
+      "evidence": "test_deletion_two_person_rule_and_legal_hold"
+    },
+    {
+      "id": "GOV-06",
+      "area": "Privacy",
+      "requirement": "Redaction producing derivative versions while preserving the original",
+      "status": "implemented_and_tested",
+      "evidence": "test_redaction_creates_new_version_preserving_original"
+    },
+    {
+      "id": "GOV-07",
+      "area": "Privacy",
+      "requirement": "External processing disabled by default; three-level authorisation (deployment, organisation, case)",
+      "status": "implemented_and_tested",
+      "evidence": "test_provider_failure_and_policy"
+    },
+    {
+      "id": "GOV-08",
+      "area": "Privacy",
+      "requirement": "Privacy impact assessment",
+      "status": "documentation_required",
+      "evidence": "Template in docs/governance/privacy-impact-assessment-template.md"
+    },
+    {
+      "id": "GOV-09",
+      "area": "Law",
+      "requirement": "India Digital Personal Data Protection Act 2023 compliance",
+      "status": "external_assessment_required",
+      "evidence": "No compliance is claimed; requires legal review of the operational deployment"
+    },
+    {
+      "id": "GOV-10",
+      "area": "Law",
+      "requirement": "EU AI Act obligations (if applicable to the deployer)",
+      "status": "external_assessment_required",
+      "evidence": "No compliance is claimed"
+    },
+    {
+      "id": "GOV-11",
+      "area": "Law",
+      "requirement": "Admissibility of reports as evidence",
+      "status": "external_assessment_required",
+      "evidence": "No evidentiary status is claimed"
+    },
+    {
+      "id": "SCI-01",
+      "area": "Scientific validity",
+      "requirement": "Simulated, measured, published and vendor-reported results kept separate",
+      "status": "implemented_and_tested",
+      "evidence": "benchmark_runs.result_kind check constraint; test_reference_watermark_benchmark_and_threshold_explorer"
+    },
+    {
+      "id": "SCI-02",
+      "area": "Scientific validity",
+      "requirement": "Detectors cannot be marked validated without locally measured benchmark evidence",
+      "status": "implemented_and_tested",
+      "evidence": "platform.update_model; same test"
+    },
+    {
+      "id": "SCI-03",
+      "area": "Scientific validity",
+      "requirement": "Strict-FPR operating points flagged as not estimable when sample size is insufficient",
+      "status": "implemented_and_tested",
+      "evidence": "reliability.tpr_at_fpr; test_tpr_at_fpr_and_estimability"
+    },
+    {
+      "id": "SCI-04",
+      "area": "Scientific validity",
+      "requirement": "Validated AI-text detector for English and Indian languages",
+      "status": "not_implemented",
+      "evidence": "No model weights are bundled; adapters exist and require locally supplied weights plus benchmark validation"
+    },
+    {
+      "id": "SCI-05",
+      "area": "Scientific validity",
+      "requirement": "Independent third-party evaluation",
+      "status": "external_assessment_required",
+      "evidence": "Protocol in docs/research/independent-evaluation-protocol.md"
+    },
+    {
+      "id": "OPS-01",
+      "area": "Operations",
+      "requirement": "Backups and tested restore",
+      "status": "documentation_required",
+      "evidence": "Procedure in docs/operations/backup-and-recovery.md; restore test must be executed by the operator"
+    },
+    {
+      "id": "OPS-02",
+      "area": "Operations",
+      "requirement": "Load testing with documented results",
+      "status": "partially_implemented",
+      "evidence": "scripts/loadtest.py provided; results in docs/operations/performance.md are from the development container only"
+    },
+    {
+      "id": "OPS-03",
+      "area": "Operations",
+      "requirement": "Government security certification",
+      "status": "not_applicable",
+      "evidence": "AEGIS holds no certification; none is claimed"
+    }
+  ]
+}

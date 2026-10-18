@@ -36,3 +36,8 @@ benchmarks/runs/
 .DS_Store
 .idea/
 .vscode/
+
+# Local service and test artefacts
+dump.rdb
+test-results/
+playwright-report/

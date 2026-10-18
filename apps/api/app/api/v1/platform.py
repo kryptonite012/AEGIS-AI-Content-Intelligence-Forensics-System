@@ -419,6 +419,23 @@ def watermark_verifiers(p: Principal = Depends(require("analysis.read"))) -> lis
 # ----------------------------------------------------------------------------- users & organisations
 
 
+@router.get("/reviewers", tags=["investigations"])
+def reviewer_candidates(p: Principal = Depends(require("case.read")), db: Session = Depends(get_db)) -> list[dict]:
+    """Active organisation members who hold the review permission (excluding the caller)."""
+    from app.security.permissions import role_permissions
+
+    rows = db.execute(
+        select(User, Membership)
+        .join(Membership, Membership.user_id == User.id)
+        .where(Membership.organization_id == p.org_id, User.is_active.is_(True))
+    ).all()
+    return [
+        {"id": str(u.id), "display_name": u.display_name, "role": m.role_id}
+        for u, m in rows
+        if "review.decide" in role_permissions(m.role_id) and u.id != p.user.id
+    ]
+
+
 class UserCreate(BaseModel):
     email: EmailStr
     display_name: str = Field(min_length=2, max_length=200)

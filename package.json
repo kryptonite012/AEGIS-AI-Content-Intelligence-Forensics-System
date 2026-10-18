@@ -1,0 +1,17 @@
+{
+  "name": "aegis",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev:web": "pnpm --filter @aegis/web dev",
+    "build:web": "pnpm --filter @aegis/web build",
+    "lint:web": "pnpm --filter @aegis/web lint",
+    "typecheck": "pnpm -r typecheck",
+    "test:web": "pnpm --filter @aegis/web test"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
