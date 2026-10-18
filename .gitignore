@@ -16,13 +16,13 @@ out/
 *.tsbuildinfo
 next-env.d.ts
 
-# Runtime data — evidence must never be committed
-var/
-storage/
-evidence/
+# Runtime data — evidence must never be committed (anchored: these names are also source folders)
+/var/
+/storage/
+/evidence/
 *.sqlite3
-research/results/
-benchmarks/runs/
+/research/results/
+/benchmarks/runs/
 
 # Secrets
 .env

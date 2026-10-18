@@ -1,0 +1,26 @@
+# HTTPS front door for AEGIS. AEGIS_SITE is set by scripts/server-setup.sh:
+#   a public domain (aegis.college.edu)  -> automatic Let's Encrypt certificate
+#   an IP or internal hostname           -> certificate from Caddy's internal CA (add "tls internal")
+{$AEGIS_SITE} {
+	{$AEGIS_TLS_DIRECTIVE}
+	encode zstd gzip
+	request_body {
+		max_size 520MB
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	@api path /api/*
+	handle @api {
+		reverse_proxy api:8000 {
+			flush_interval -1
+			transport http {
+				read_timeout 1h
+			}
+		}
+	}
+	handle {
+		reverse_proxy web:3000
+	}
+}

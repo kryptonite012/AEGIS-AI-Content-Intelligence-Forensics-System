@@ -1,0 +1,28 @@
+# Server overlay: adds the Caddy HTTPS proxy and production restart policies.
+# Used by scripts/server-setup.sh:
+#   docker compose -f docker-compose.yml -f infrastructure/deployment/docker-compose.server.yml up -d
+services:
+  caddy:
+    image: caddy:2.8-alpine
+    ports: ["80:80", "443:443"]
+    environment:
+      AEGIS_SITE: ${AEGIS_SITE:?set AEGIS_SITE in .env}
+      AEGIS_TLS_DIRECTIVE: ${AEGIS_TLS_DIRECTIVE:-}
+    volumes:
+      - ./infrastructure/deployment/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [web, api]
+    restart: unless-stopped
+  postgres:
+    ports: !reset []
+  redis:
+    ports: !reset []
+  api:
+    ports: !reset []
+  web:
+    ports: !reset []
+
+volumes:
+  caddydata:
+  caddyconfig:
