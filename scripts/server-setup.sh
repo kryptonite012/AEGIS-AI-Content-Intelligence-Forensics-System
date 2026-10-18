@@ -41,20 +41,20 @@ $COMPOSE build
 $COMPOSE up -d
 echo "Waiting for the API..."
 for _ in $(seq 1 60); do
-  $COMPOSE exec -T api python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready')" 2>/dev/null && break
+  $COMPOSE exec -T api python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/ready')" </dev/null 2>/dev/null && break
   sleep 3
 done
 
 if ! $COMPOSE exec -T api python -c "
 from app.db import get_sessionmaker; from app.models import User; from sqlalchemy import select
-import sys; s=get_sessionmaker()(); sys.exit(0 if s.execute(select(User).where(User.is_system_admin.is_(True))).first() else 1)" 2>/dev/null; then
+import sys; s=get_sessionmaker()(); sys.exit(0 if s.execute(select(User).where(User.is_system_admin.is_(True))).first() else 1)" </dev/null 2>/dev/null; then
   read -rp "Administrator email: " EMAIL
   read -rp "Administrator name: " NAME
   read -rp "Organisation name (e.g. Department of Computer Science): " ORG
   SLUG=$(echo "$ORG" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '-' | sed 's/^-//;s/-$//' | cut -c1-60)
   read -rsp "Administrator password (12+ chars, upper+lower case and a digit): " PASS; echo
   $COMPOSE exec -T -e AEGIS_ADMIN_PASSWORD="$PASS" api python -m app.cli create-admin \
-    --email "$EMAIL" --name "$NAME" --org-name "$ORG" --org-slug "${SLUG:-aegis}"
+    --email "$EMAIL" --name "$NAME" --org-name "$ORG" --org-slug "${SLUG:-aegis}" </dev/null
 fi
 
 echo
