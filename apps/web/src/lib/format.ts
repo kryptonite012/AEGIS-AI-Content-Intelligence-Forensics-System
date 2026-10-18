@@ -34,12 +34,24 @@ export function fmtBytes(n: number | null | undefined) {
 export function fmtNum(v: number | null | undefined, digits = 3) {
   if (v == null || Number.isNaN(v)) return "—";
   if (Math.abs(v) !== 0 && (Math.abs(v) < 1e-3 || Math.abs(v) >= 1e5)) return v.toExponential(2);
-  return v.toFixed(digits).replace(/\.?0+$/, (m) => (m.includes(".") ? "" : m));
+  // Never let rounding make a value look exact (e.g. 0.9999 shown as "1").
+  let d = digits;
+  while (d < 6 && v !== Math.round(v) && Number(v.toFixed(d)) === Math.round(v)) d++;
+  const s = v.toFixed(d);
+  return s.includes(".") ? s.replace(/0+$/, "").replace(/\.$/, "") : s;
+}
+
+/** Percentages that never round to exactly 0% or 100% unless the value is exact. */
+export function fmtPctSafe(v: number | null | undefined, digits = 1) {
+  if (v == null || Number.isNaN(v)) return "—";
+  let d = digits;
+  const pctv = v * 100;
+  while (d < 4 && pctv !== Math.round(pctv) && [0, 100].includes(Number(pctv.toFixed(d)))) d++;
+  return `${pctv.toFixed(d)}%`;
 }
 
 export function fmtPct(v: number | null | undefined, digits = 1) {
-  if (v == null || Number.isNaN(v)) return "—";
-  return `${(v * 100).toFixed(digits)}%`;
+  return fmtPctSafe(v, digits);
 }
 
 export const humanize = (s: string | null | undefined) => (s ? s.replace(/[_.]/g, " ").replace(/\s+/g, " ").trim() : "—");

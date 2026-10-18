@@ -1,0 +1,15 @@
+.git
+.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+var
+.env
+.env.*
+!.env.example
+dump.rdb
+**/test-results
+research/results
+benchmarks/runs

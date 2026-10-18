@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, educational]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: aegis
+          POSTGRES_PASSWORD: aegis-dev-only
+          POSTGRES_DB: aegis_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U aegis" --health-interval 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with: { version: "0.5.11" }
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: uv sync --frozen
+      - run: uv run --frozen ruff check .
+      - run: uv run --frozen ruff format --check .
+      - name: Tests (migrations are applied from a clean schema by the test harness)
+        run: uv run --frozen pytest
+        env:
+          AEGIS_TEST_DATABASE_URL: postgresql+psycopg://aegis:aegis-dev-only@localhost:5432/aegis_test
+      - name: Dependency audit
+        run: |
+          uv export --frozen --no-dev --no-hashes --no-emit-workspace -o requirements.txt
+          uv run --frozen pip-audit -r requirements.txt
+
+  web:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: "10.28.0" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22", cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @aegis/web lint
+      - run: pnpm --filter @aegis/web typecheck
+      - run: pnpm --filter @aegis/web test
+      - run: pnpm --filter @aegis/web build
+        env: { NEXT_TELEMETRY_DISABLED: "1" }
+      - run: pnpm audit --prod
+
+  images:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f infrastructure/docker/api.Dockerfile -t aegis-api:ci .
+      - run: docker build -f infrastructure/docker/web.Dockerfile -t aegis-web:ci .

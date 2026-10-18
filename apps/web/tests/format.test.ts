@@ -13,6 +13,10 @@ describe("format helpers", () => {
     expect(fmtNum(2.47e-30)).toBe("2.47e-30");
     expect(fmtNum(null)).toBe("—");
     expect(fmtPct(0.05)).toBe("5.0%");
+    expect(fmtNum(0.99994, 3)).toBe("0.9999");
+    expect(fmtNum(1, 3)).toBe("1");
+    expect(fmtPct(0.99999)).toBe("99.999%");
+    expect(fmtPct(0)).toBe("0.0%");
   });
   it("humanizes identifiers", () => {
     expect(humanize("evidence_of_recognized_watermark")).toBe("evidence of recognized watermark");

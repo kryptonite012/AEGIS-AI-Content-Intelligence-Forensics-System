@@ -63,7 +63,7 @@ export function RocChart({ points, caption }: { points: { fpr: number; tpr: numb
         <YAxis dataKey="tpr" type="number" domain={[0, 1]} {...axis} label={{ value: "True-positive rate", angle: -90, position: "insideLeft", fill: C.muted, fontSize: 11 }} />
         <Tooltip {...tooltipStyle} formatter={(v: number) => v.toFixed(3)} />
         <ReferenceLine segment={[{ x: 0, y: 0 }, { x: 1, y: 1 }]} stroke={C.muted} strokeDasharray="4 4" />
-        <ReferenceLine x={0.01} stroke={C.warn} strokeDasharray="2 4" label={{ value: "1% FPR", fill: C.warn, fontSize: 10, position: "top" }} />
+        <ReferenceLine x={0.01} stroke={C.warn} strokeDasharray="2 4" label={{ value: "1% FPR", fill: C.warn, fontSize: 10, position: "insideTopLeft" }} />
         <Line type="stepAfter" dataKey="tpr" stroke={C.accent} strokeWidth={2} dot={false} isAnimationActive={false} />
       </LineChart>
     </ChartFrame>
@@ -104,7 +104,7 @@ export function PpvCurve({
         <XAxis dataKey="prevalence" scale="log" type="number" domain={["dataMin", "dataMax"]} {...axis} tickFormatter={(v) => `${+(v * 100).toPrecision(2)}%`} label={{ value: "Prevalence of AI content (log scale)", position: "insideBottom", offset: -8, fill: C.muted, fontSize: 11 }} />
         <YAxis domain={[0, 1]} {...axis} tickFormatter={(v) => `${Math.round(v * 100)}%`} />
         <Tooltip {...tooltipStyle} formatter={(v: number) => `${(v * 100).toFixed(1)}%`} labelFormatter={(v) => `prevalence ${(Number(v) * 100).toPrecision(3)}%`} />
-        <Legend wrapperStyle={{ fontSize: 11, color: C.muted }} />
+        <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11, color: C.muted }} />
         {marker != null && <ReferenceLine x={marker} stroke={C.warn} strokeDasharray="3 3" />}
         {series.map((s, i) => (
           <Line key={s.name} type="monotone" dataKey={s.name} stroke={SERIES[i % SERIES.length]} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} />
@@ -142,7 +142,7 @@ export function SimpleLines({
         <XAxis dataKey={x} type="number" scale={logX ? "log" : "auto"} domain={["dataMin", "dataMax"]} {...axis} label={xLabel ? { value: xLabel, position: "insideBottom", offset: -10, fill: C.muted, fontSize: 11 } : undefined} />
         <YAxis scale={logY ? "log" : "auto"} domain={yDomain ?? (logY ? ["auto", "auto"] : [0, "auto"])} {...axis} allowDataOverflow label={yLabel ? { value: yLabel, angle: -90, position: "insideLeft", fill: C.muted, fontSize: 11 } : undefined} />
         <Tooltip {...tooltipStyle} />
-        <Legend wrapperStyle={{ fontSize: 11, color: C.muted }} />
+        <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11, color: C.muted }} />
         {lines.map((l, i) => (
           <Line key={l.key} dataKey={l.key} name={l.name ?? l.key} stroke={SERIES[i % SERIES.length]} strokeDasharray={l.dashed ? "4 4" : undefined} strokeWidth={2} dot={{ r: 2 }} isAnimationActive={false} connectNulls />
         ))}
@@ -184,7 +184,7 @@ export function Bars({
           </>
         )}
         <Tooltip {...tooltipStyle} cursor={{ fill: "rgb(30 41 64 / 0.4)" }} />
-        {bars.length > 1 && <Legend wrapperStyle={{ fontSize: 11, color: C.muted }} />}
+        {bars.length > 1 && <Legend verticalAlign="top" height={24} wrapperStyle={{ fontSize: 11, color: C.muted }} />}
         {bars.map((b, i) => (
           <Bar key={b.key} dataKey={b.key} name={b.name ?? b.key} fill={SERIES[i % SERIES.length]} radius={horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]} isAnimationActive={false}>
             {colorByIndex && data.map((_, j) => <Cell key={j} fill={SERIES[j % SERIES.length]} />)}

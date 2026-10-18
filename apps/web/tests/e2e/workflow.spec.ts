@@ -33,9 +33,11 @@ test("investigator → analysis → reviewer decision → report → audit", asy
   await inv.getByRole("button", { name: "Create case and continue" }).click();
 
   await inv.locator('input[type="file"]').setInputFiles({ name: "field-notes.txt", mimeType: "text/plain", buffer: Buffer.from(FIELD_NOTES) });
-  await expect(inv.getByText("local SHA-256")).toBeVisible();
+  // crypto.subtle exists only in secure contexts (HTTPS or localhost).
+  const secure = await inv.evaluate(() => window.isSecureContext);
+  await expect(inv.getByText(secure ? "local SHA-256" : "local hash unavailable")).toBeVisible();
   await inv.getByRole("button", { name: "Upload", exact: true }).click();
-  await expect(inv.getByText("matches local hash")).toBeVisible();
+  await expect(inv.getByText(secure ? "matches local hash" : "server SHA-256")).toBeVisible();
   await shot(inv, "03-evidence-acquired");
   await inv.getByRole("button", { name: "Continue" }).click();
   await expect(inv.getByText("Text authenticity triage").first()).toBeVisible();

@@ -216,6 +216,8 @@ export default function NewInvestigationPage() {
                         <>server SHA-256 <Hash value={p.item.versions[0].sha256} short />{p.clientHash && (p.clientHash === p.item.versions[0].sha256 ? <Badge tone="ok">matches local hash</Badge> : <Badge tone="danger">differs from local hash</Badge>)}</>
                       ) : p.clientHash ? (
                         <>local SHA-256 <Hash value={p.clientHash} short /></>
+                      ) : p.clientHash === null ? (
+                        "local hash unavailable (needs HTTPS or a file under 256 MB); the server hash is still recorded"
                       ) : (
                         "computing local hash…"
                       )}
