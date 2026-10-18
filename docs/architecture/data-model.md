@@ -11,6 +11,7 @@ Source of truth: `apps/api/app/models/__init__.py`. The schema is created only t
 | Registry | `model_providers`, `detector_versions`, `calibration_profiles` | `(method_id, version)` is unique. Validation requires a benchmark run reference (enforced in the API). |
 | Research | `datasets`, `benchmark_suites`, `benchmark_runs`, `benchmark_samples`, `experiment_runs` | `benchmark_runs.result_kind` is restricted by a CHECK constraint to published / reproduced / locally_measured / simulated / vendor_reported. |
 | Governance | `reports`, `audit_events`, `retention_policies`, `notifications`, `system_health_events`, `system_settings` | `(investigation_id, version)` is unique per report. `audit_events.event_hash` is unique; `prev_hash` links the chain. |
+| Object store | `stored_objects`, `stored_object_chunks` | Used only with `AEGIS_STORAGE_BACKEND=database`. An object and its ordered chunks are inserted in one transaction and never updated; the key is the primary key, so a second write fails. |
 
 Indexes cover tenant/status filters (`ix_investigations_org_status`), audit queries by organisation and time and by entity, unread notifications, and job status.
 

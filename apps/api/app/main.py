@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +30,20 @@ Errors: `{"error": {"code", "message", "correlation_id", "details"}}`; every res
 """
 
 
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    s = get_settings()
+    if s.task_mode == "inline" and s.resume_inline_jobs_on_startup:
+        from app.db import get_sessionmaker
+        from app.services.analysis import resume_inline_jobs
+
+        with get_sessionmaker()() as db:
+            n = resume_inline_jobs(db)
+        if n:
+            logging.getLogger("aegis").info("resumed %d interrupted job(s)", n)
+    yield
+
+
 def create_app() -> FastAPI:
     s = get_settings()
     configure_logging()
@@ -41,6 +57,7 @@ def create_app() -> FastAPI:
         docs_url="/api/docs",
         redoc_url="/api/redoc",
         openapi_url="/api/openapi.json",
+        lifespan=lifespan,
     )
     app.add_middleware(RequestContextMiddleware)
     app.add_middleware(

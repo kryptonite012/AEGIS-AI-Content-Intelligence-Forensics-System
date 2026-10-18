@@ -30,6 +30,10 @@ All numbers below were **measured** with `scripts/loadtest.py` (`make loadtest`)
 
 **Interpretation.** `text_triage` jobs are cheap in this build because the four model-backed text methods are unavailable; the measured work is extraction-dependent statistics and the watermark z-test. Jobs with transformer detectors will be dominated by model inference and need dedicated, possibly GPU-backed, worker pools. Image and video jobs depend on resolution and duration. For the demo-seed 4-second 320×240 video, the recorded run durations on this host were 49 ms (`video.container`) and 386 ms (`video.temporal_consistency`, 2 fps sampling). Re-measure on your own hardware before planning capacity.
 
+## Free-plan container
+
+[render.md](render.md#measured-behaviour-under-free-plan-limits) lists measurements of the single-container image (`infrastructure/docker/render.Dockerfile`) running with 0.1 CPU and 512 MB of memory. At that size, start-up is dominated by importing the scientific Python libraries, so `scipy.signal` is imported only when an audio spectrogram is computed.
+
 ## Built-in limits that bound resource use
 
 Upload size 512 MB (text/documents 25 MB). Chunk size 8 MB. Audio up to 3 h accepted, first 900 s analysed. Video up to 2 h accepted, at most 240 sampled frames. Images are analysed downsampled to 1024 px. Text extraction is capped at 2 M characters; classifier scoring at 16 × 512 tokens. Celery hard time limit is 3,600 s per job.

@@ -106,4 +106,4 @@ Finalised and archived cases refuse edits and new evidence. Corrections create a
 
 ## Scaling notes
 
-The API is stateless; run multiple uvicorn workers or replicas behind the proxy. Workers scale horizontally. Model-backed methods should run in dedicated worker pools (separate queue) sized to model memory, with GPU nodes where available. PostgreSQL holds only structured data; binaries live in object storage. See [performance](../operations/performance.md) for measured numbers and test conditions.
+The API is stateless; run multiple uvicorn workers or replicas behind the proxy. Workers scale horizontally. Model-backed methods should run in dedicated worker pools (separate queue) sized to model memory, with GPU nodes where available. PostgreSQL holds only structured data; binaries live in object storage. The exception is the `database` storage backend, for hosts without a persistent disk (see [Render](../operations/render.md)), which keeps write-once objects in PostgreSQL and suits small deployments only. See [performance](../operations/performance.md) for measured numbers and test conditions.

@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from scipy import signal
 
 from aegis_ml.core import (
     AnalysisInput,
@@ -122,6 +121,8 @@ class AudioSignalMethod(AnalysisMethod):
         frame_db = 20 * np.log10(np.sqrt((frames**2).mean(axis=1)) + 1e-12)
         silence = float((frame_db < -50).mean())
         clipping = float((np.abs(x) >= 0.999).mean())
+        from scipy import signal  # imported on use: it dominates API start-up time otherwise
+
         f, t, sxx = signal.spectrogram(x, fs=sr, nperseg=1024, noverlap=768, window="hann")
         power = sxx.mean(axis=1)
         cum = np.cumsum(power) / power.sum() if power.sum() else np.zeros_like(power)

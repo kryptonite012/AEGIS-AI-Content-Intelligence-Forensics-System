@@ -521,6 +521,16 @@ def recover_stale_jobs(db: Session, older_than_minutes: int = 30) -> int:
     return len(stale)
 
 
+def resume_inline_jobs(db: Session) -> int:
+    """Inline task mode has no broker, so jobs cut off by a restart would stay queued or running for ever.
+    Called once at API startup; only correct when this API process is the sole executor of jobs."""
+    queued = db.execute(select(AnalysisJob.id).where(AnalysisJob.status == "queued")).scalars().all()
+    recovered = recover_stale_jobs(db, older_than_minutes=0)
+    for job_id in queued:
+        dispatch(job_id)
+    return recovered + len(queued)
+
+
 def require_job(db: Session, p: Principal, job_id: uuid.UUID) -> AnalysisJob:
     job = db.get(AnalysisJob, job_id)
     if job is None or job.organization_id != p.org_id:

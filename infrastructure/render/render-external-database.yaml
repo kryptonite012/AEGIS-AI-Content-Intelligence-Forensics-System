@@ -1,0 +1,42 @@
+# Render Blueprint: AEGIS as one free web service using a PostgreSQL database hosted elsewhere
+# (for example a free Neon project), for workspaces whose one free Render database is already in use.
+# Set this file as the Blueprint path. Guide: docs/operations/render.md
+services:
+  - type: web
+    name: aegis
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./infrastructure/docker/render.Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health/live
+    buildFilter:
+      ignoredPaths:
+        - "**/*.md"
+        - docs/assets/**
+        - apps/web/tests/**
+    envVars:
+      - key: AEGIS_DATABASE_URL # paste your database's connection string when creating the Blueprint
+        sync: false
+      - key: AEGIS_DEMO_PASSWORD # you choose it when creating the Blueprint; used by every demo account
+        sync: false
+      - key: AEGIS_SECRET_KEY
+        generateValue: true
+      - key: AEGIS_REFERENCE_WATERMARK_KEY
+        generateValue: true
+      - key: AEGIS_ENVIRONMENT
+        value: hosted-demo
+      - key: AEGIS_MODE
+        value: demo
+      - key: AEGIS_SEED_DEMO
+        value: "true"
+      - key: AEGIS_TASK_MODE # no free background workers: analyses run inside the web service
+        value: inline
+      - key: AEGIS_RESUME_INLINE_JOBS_ON_STARTUP
+        value: "true"
+      - key: AEGIS_STORAGE_BACKEND # free services have no persistent disk: evidence is kept in PostgreSQL
+        value: database
+      - key: AEGIS_COOKIE_SECURE
+        value: "true"
+      - key: AEGIS_MAX_UPLOAD_MB
+        value: "25"

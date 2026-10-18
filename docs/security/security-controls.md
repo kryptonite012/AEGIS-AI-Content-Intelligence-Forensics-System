@@ -13,7 +13,7 @@ The machine-readable version, including status per control, is [`docs/governance
 | Security headers | CSP (`default-src 'none'` on API), nosniff, DENY framing, no-referrer, HSTS over HTTPS, `Cache-Control: no-store` | `test_error_format_and_headers` |
 | CORS | Explicit origin allow-list (`AEGIS_CORS_ORIGINS`) | configuration |
 | Secrets | Environment / secret store only; never in responses, logs or reports; production refuses dev secret key, inline tasks and insecure cookies | `test_no_secrets_in_responses`, `Settings.check_production_safety` |
-| Evidence integrity | SHA-256 at acquisition; write-once storage; re-verification with critical alerts | `test_integrity_verification_and_mismatch_alert`, `test_storage_is_write_once` |
+| Evidence integrity | SHA-256 at acquisition; write-once storage; re-verification with critical alerts | `test_integrity_verification_and_mismatch_alert`, `test_storage_is_write_once`, `test_database_backend_round_trip_and_write_once` |
 | Audit | Append-only hash chain, verification endpoint, head export | `test_audit_tampering_detected` |
 | Report integrity | Canonical JSON hash, PDF hash, deterministic re-render | `test_report_tampering_detected` |
 | External processing | Off by default; deployment AND organisation AND case must allow it | `test_provider_failure_and_policy` |

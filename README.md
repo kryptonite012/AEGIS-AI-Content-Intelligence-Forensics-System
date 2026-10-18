@@ -12,7 +12,7 @@ A multimodal forensic platform that helps authorised analysts examine whether di
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.143-009688?logo=fastapi&logoColor=white)
 ![Next.js](https://img.shields.io/badge/Next.js-15.5-000000?logo=nextdotjs&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-96%20py%20·%203%20unit%20·%203%20e2e%20passing-34D399)
+![Tests](https://img.shields.io/badge/tests-101%20py%20·%203%20unit%20·%203%20e2e%20passing-34D399)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
 </div>
@@ -60,7 +60,13 @@ docker compose exec api python -m app.cli seed-demo   # development only: demo u
 open http://localhost:3000      # sign in as investigator@aegis.demo / Aegis-Demo-Only-2026
 ```
 
-**Option B: local development** (needs Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 22, pnpm 10, PostgreSQL 16, Redis 7 and ffmpeg)
+**Option B: Render** (free, public `https://….onrender.com` link, no server needed)
+
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/kryptonite012/AEGIS-AI-Content-Intelligence-Forensics-System)
+
+Choose a demo password when Render asks for `AEGIS_DEMO_PASSWORD`, wait for the first build, then sign in as `investigator@aegis.demo`. It can run alongside your other Render projects. The [Render guide](docs/operations/render.md) covers the free-plan limits and what to do if your free Render database is already in use.
+
+**Option C: local development** (needs Python 3.11+, [uv](https://docs.astral.sh/uv/), Node 22, pnpm 10, PostgreSQL 16, Redis 7 and ffmpeg)
 
 ```bash
 make setup        # uv sync --frozen, pnpm install --frozen-lockfile, creates .env
@@ -105,7 +111,7 @@ apps/
 ml/             aegis_ml: analysis methods, content sniffing, C2PA verifier, provider adapters, evidence fusion
 research/       aegis_research: reliability statistics, reference watermark, the nine experiments
 packages/       shared-types: TypeScript API contract shared by clients
-infrastructure/ Dockerfiles
+infrastructure/ Dockerfiles, server and Render deployment files
 docs/           architecture, security, API, research, operations and governance documentation
 scripts/        dev runner and load test
 benchmarks/     run outputs (git-ignored)
@@ -116,7 +122,7 @@ benchmarks/     run outputs (git-ignored)
 | Capability | Status in this build |
 | --- | --- |
 | Case management, state machine, separation of duties, appeals, corrections | Operational, tested |
-| Evidence vault: content sniffing, SHA-256, write-once storage (local / S3), versions, redaction, integrity alerts, two-person deletion | Operational, tested (S3 tested against moto) |
+| Evidence vault: content sniffing, SHA-256, write-once storage (local / S3 / PostgreSQL), versions, redaction, integrity alerts, two-person deletion | Operational, tested (S3 tested against moto) |
 | Text extraction (TXT, PDF, DOCX), segmentation, language ID (incl. Hindi/Indic scripts) | Operational, tested |
 | C2PA Content Credentials verification | Operational, tested with signed, tampered and unsigned files |
 | AEGIS reference text watermark verifier | Operational, tested. Verifies only text from the AEGIS reference generator under this deployment's key |
@@ -134,7 +140,7 @@ See [docs/governance/limitations-and-residual-risks.md](docs/governance/limitati
 - **Security:** [threat model](docs/security/threat-model.md) · [controls matrix](docs/security/security-controls.md) · [audit chain](docs/security/audit-chain.md)
 - **API:** [API guide](docs/api/README.md) · [provider contract](docs/api/provider-contract.md) · OpenAPI at `/api/docs`
 - **Research:** [methods & literature map](docs/research/methods-and-literature.md) · [evaluation methodology](docs/research/evaluation-methodology.md) · [experiments & results](docs/research/experiments.md) · [model cards](docs/research/model-cards.md) · [dataset cards](docs/research/dataset-cards.md) · [multilingual plan](docs/research/multilingual-evaluation-plan.md) · [independent evaluation protocol](docs/research/independent-evaluation-protocol.md)
-- **Operations:** [college server setup](docs/operations/college-server.md) · [deployment](docs/operations/deployment.md) · [configuring detectors](docs/operations/configuring-detectors.md) · [backup & recovery](docs/operations/backup-and-recovery.md) · [incident response](docs/operations/incident-response.md) · [performance](docs/operations/performance.md) · [troubleshooting](docs/operations/troubleshooting.md)
+- **Operations:** [Render (free hosting)](docs/operations/render.md) · [college server setup](docs/operations/college-server.md) · [deployment](docs/operations/deployment.md) · [configuring detectors](docs/operations/configuring-detectors.md) · [backup & recovery](docs/operations/backup-and-recovery.md) · [incident response](docs/operations/incident-response.md) · [performance](docs/operations/performance.md) · [troubleshooting](docs/operations/troubleshooting.md)
 - **Governance:** [pilot readiness package](docs/governance/README.md) · [compliance mapping](docs/governance/compliance-mapping.json) · [human review & appeal procedure](docs/governance/human-review-and-appeal-procedure.md) · [roadmap](docs/governance/roadmap.md)
 
 ## Responsible use

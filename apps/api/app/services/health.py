@@ -44,13 +44,16 @@ def components(db: Session) -> list[dict[str, Any]]:
         add("database", "PostgreSQL", "infrastructure", False, type(exc).__name__)
     s = get_settings()
     redis_ok = False
-    try:
-        r = _redis()
-        r.ping()
-        redis_ok = True
-        add("redis", "Redis (queue broker)", "infrastructure", True, "ping ok")
-    except Exception as exc:  # noqa: BLE001
-        add("redis", "Redis (queue broker)", "infrastructure", False, type(exc).__name__)
+    if not s.redis_url:
+        add("redis", "Redis (queue broker)", "infrastructure", None, "not configured: rate limits are kept in process")
+    else:
+        try:
+            r = _redis()
+            r.ping()
+            redis_ok = True
+            add("redis", "Redis (queue broker)", "infrastructure", True, "ping ok")
+        except Exception as exc:  # noqa: BLE001
+            add("redis", "Redis (queue broker)", "infrastructure", False, type(exc).__name__)
     if s.task_mode == "celery":
         if redis_ok:
             hb = r.get("aegis:worker:heartbeat")
@@ -74,7 +77,7 @@ def components(db: Session) -> list[dict[str, Any]]:
             "Analysis workers",
             "processing",
             True,
-            f"task mode '{s.task_mode}' (in-process; development only)",
+            f"task mode '{s.task_mode}' (in-process; not for production)",
         )
     storage = get_storage()
     ok, detail = storage.health()

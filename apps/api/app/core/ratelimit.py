@@ -38,10 +38,13 @@ _memory = _Memory()
 
 @lru_cache
 def _redis():
+    url = get_settings().redis_url
+    if not url:
+        return None
     try:
         import redis
 
-        r = redis.Redis.from_url(get_settings().redis_url, socket_timeout=0.5, socket_connect_timeout=0.5)
+        r = redis.Redis.from_url(url, socket_timeout=0.5, socket_connect_timeout=0.5)
         r.ping()
         return r
     except Exception:  # noqa: BLE001 - fall back to in-process limiting

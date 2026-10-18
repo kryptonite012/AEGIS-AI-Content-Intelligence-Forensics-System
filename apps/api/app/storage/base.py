@@ -19,6 +19,12 @@ class ObjectExists(StorageError):
     pass
 
 
+def check_key(key: str) -> None:
+    """Keys are relative, slash-separated names; they can never address anything outside the store."""
+    if not key or key.startswith("/") or ".." in key.split("/") or "\\" in key or "\0" in key:
+        raise StorageError("invalid storage key")
+
+
 class Storage(ABC):
     name: str
 
@@ -73,6 +79,10 @@ def get_storage() -> Storage:
         from app.storage.s3 import S3Storage
 
         return S3Storage(s.s3_bucket, s.s3_endpoint_url, s.s3_region, s.s3_object_lock)
+    if s.storage_backend == "database":
+        from app.storage.database import DatabaseStorage
+
+        return DatabaseStorage()
     from app.storage.local import LocalStorage
 
     return LocalStorage(s.storage_root)

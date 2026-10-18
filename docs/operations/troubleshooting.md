@@ -17,3 +17,4 @@
 | SSE progress never updates behind nginx | Proxy buffering | `proxy_buffering off;` for `/api/` (the API also sends `X-Accel-Buffering: no`) |
 | `alembic check` reports drift | Model changed without a migration | `alembic revision --autogenerate -m "..."` and review the result |
 | API tests fail to connect | Test database missing | `createdb -O aegis aegis_test`, or set `AEGIS_TEST_DATABASE_URL` |
+| Hosted on Render and something is wrong | Free-plan specifics | See the troubleshooting table in [render.md](render.md#troubleshooting) |

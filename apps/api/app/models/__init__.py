@@ -16,6 +16,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -634,3 +635,24 @@ class SystemSetting(Base):
     value: Mapped[Any] = mapped_column(JSONType)
     updated_by_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
     updated_at: Mapped[datetime] = mapped_column(default=utcnow, onupdate=utcnow)
+
+
+# --------------------------------------------------------------------------- database object store
+
+
+class StoredObject(Base):
+    """An object held by the database storage backend (AEGIS_STORAGE_BACKEND=database), for hosts
+    without a persistent disk. Inserted once with its chunks and never updated."""
+
+    __tablename__ = "stored_objects"
+    key: Mapped[str] = mapped_column(String(512), primary_key=True)
+    content_type: Mapped[str] = mapped_column(String(200))
+    size_bytes: Mapped[int] = mapped_column(BigInteger)
+    created_at: Mapped[datetime] = _created()
+
+
+class StoredObjectChunk(Base):
+    __tablename__ = "stored_object_chunks"
+    key: Mapped[str] = mapped_column(ForeignKey("stored_objects.key", ondelete="CASCADE"), primary_key=True)
+    seq: Mapped[int] = mapped_column(Integer, primary_key=True)
+    data: Mapped[bytes] = mapped_column(LargeBinary)

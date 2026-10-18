@@ -1,0 +1,54 @@
+# Render Blueprint: AEGIS as one free web service plus one free PostgreSQL database.
+# Step-by-step guide, limits and alternatives: docs/operations/render.md
+# Already using your workspace's one free Render database? Use
+# infrastructure/render/render-external-database.yaml as the Blueprint path instead.
+services:
+  - type: web
+    name: aegis
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./infrastructure/docker/render.Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health/live
+    buildFilter:
+      ignoredPaths:
+        - "**/*.md"
+        - docs/assets/**
+        - apps/web/tests/**
+    envVars:
+      - key: AEGIS_DATABASE_URL
+        fromDatabase:
+          name: aegis-db
+          property: connectionString
+      - key: AEGIS_DEMO_PASSWORD # you choose it when creating the Blueprint; used by every demo account
+        sync: false
+      - key: AEGIS_SECRET_KEY
+        generateValue: true
+      - key: AEGIS_REFERENCE_WATERMARK_KEY
+        generateValue: true
+      - key: AEGIS_ENVIRONMENT
+        value: hosted-demo
+      - key: AEGIS_MODE
+        value: demo
+      - key: AEGIS_SEED_DEMO
+        value: "true"
+      - key: AEGIS_TASK_MODE # no free background workers: analyses run inside the web service
+        value: inline
+      - key: AEGIS_RESUME_INLINE_JOBS_ON_STARTUP
+        value: "true"
+      - key: AEGIS_STORAGE_BACKEND # free services have no persistent disk: evidence is kept in PostgreSQL
+        value: database
+      - key: AEGIS_COOKIE_SECURE
+        value: "true"
+      - key: AEGIS_MAX_UPLOAD_MB
+        value: "25"
+
+databases:
+  - name: aegis-db
+    plan: free
+    region: singapore
+    databaseName: aegis
+    user: aegis
+    postgresMajorVersion: "16"
+    ipAllowList: [] # reachable only from services in this Render workspace

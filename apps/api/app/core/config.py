@@ -6,7 +6,7 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -20,13 +20,14 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="AEGIS_", env_file=".env", extra="ignore")
 
     mode: Mode = Mode.DEMO
-    environment: str = "development"  # development | test | production
+    environment: str = "development"  # development | test | hosted-demo | production
     secret_key: str = Field(default="dev-only-insecure-secret-change-me-0123456789", min_length=32)
     database_url: str = "postgresql+psycopg://aegis:aegis-dev-only@localhost:5432/aegis"
-    redis_url: str = "redis://localhost:6379/0"
-    task_mode: str = "celery"  # celery | inline (inline: background thread, development/tests only)
+    redis_url: str = "redis://localhost:6379/0"  # empty: no Redis (inline task mode, in-process rate limits)
+    task_mode: str = "celery"  # celery | inline (inline: background thread, not permitted in production)
+    resume_inline_jobs_on_startup: bool = False  # inline mode with a single API process only
 
-    storage_backend: str = "local"  # local | s3
+    storage_backend: str = "local"  # local | s3 | database
     storage_root: Path = Path("var/evidence")
     s3_bucket: str = "aegis-evidence"
     s3_endpoint_url: str | None = None
@@ -50,6 +51,15 @@ class Settings(BaseSettings):
     api_rate_limit_per_minute: int = 600
 
     allow_external_processing: bool = False  # deployment-wide kill switch for external providers
+
+    @field_validator("database_url")
+    @classmethod
+    def _psycopg_driver(cls, v: str) -> str:
+        # Hosted databases (Render, Neon, Heroku) hand out postgres:// URLs; AEGIS uses psycopg 3.
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix) :]
+        return v
 
     @property
     def cors_origin_list(self) -> list[str]:

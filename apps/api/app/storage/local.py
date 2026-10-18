@@ -7,7 +7,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from app.storage.base import ObjectExists, Storage, StorageError
+from app.storage.base import ObjectExists, Storage, StorageError, check_key
 
 
 class LocalStorage(Storage):
@@ -21,8 +21,7 @@ class LocalStorage(Storage):
         self.root.mkdir(parents=True, exist_ok=True)
 
     def _path(self, key: str) -> Path:
-        if not key or key.startswith("/") or ".." in key.split("/") or "\\" in key or "\0" in key:
-            raise StorageError("invalid storage key")
+        check_key(key)
         p = (self.root / key).resolve()
         if self.root not in p.parents:
             raise StorageError("invalid storage key")
