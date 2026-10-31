@@ -32,8 +32,9 @@ class S3Storage(Storage):
     def _put(self, key: str, body, content_type: str) -> None:  # type: ignore[no-untyped-def]
         if self.exists(key):
             raise ObjectExists(key)
-        self.client.put_object(Bucket=self.bucket, Key=key, Body=body, ContentType=content_type,
-                               ServerSideEncryption="AES256")
+        self.client.put_object(
+            Bucket=self.bucket, Key=key, Body=body, ContentType=content_type, ServerSideEncryption="AES256"
+        )
 
     def put_file(self, key: str, src, content_type: str) -> None:  # type: ignore[no-untyped-def]
         with open(src, "rb") as f:

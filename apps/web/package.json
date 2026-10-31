@@ -15,7 +15,7 @@
     "@aegis/shared-types": "workspace:*",
     "@fontsource-variable/inter": "5.1.0",
     "@fontsource-variable/jetbrains-mono": "5.1.1",
-    "@hookform/resolvers": "3.9.1",
+    "@hookform/resolvers": "5.9.2",
     "@tanstack/react-query": "5.62.7",
     "@tanstack/react-table": "8.20.6",
     "clsx": "2.1.1",
@@ -23,9 +23,9 @@
     "next": "15.5.28",
     "react": "18.3.1",
     "react-dom": "18.3.1",
-    "react-hook-form": "7.54.1",
+    "react-hook-form": "7.91.0",
     "recharts": "2.15.0",
-    "zod": "3.24.1"
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",
